@@ -22,3 +22,8 @@ int main(int argc, char *argv[])
 	   }
 	 return 0; // myrcp(argv[1], argv[2]);
 }
+
+int myrcp(char *f1, char *f2)
+{
+  
+}
