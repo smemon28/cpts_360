@@ -160,6 +160,17 @@ int cpf2d(char *f1, char *f2)
      //      if f2/x is a DIR  ==> cpf2d(f1, f2/x)
      */
            printf("cpf2d running....\n");
+	   
+	   struct dirent *ep;       // use direct to search directories
+	   DIR *dp = opendir(f2);   // open the DIR 'f2'
+	   while (ep = readdir(dp))
+	     {
+	       if (strcmp(f1, ep->d_name) == 0)
+		 {
+		   printf("%s already exists in %s\n", f1, f2);
+		   break;
+		 }
+	     }
 }
 
 int cpd2d(char *f1, char *f2)
