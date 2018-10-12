@@ -20,7 +20,9 @@
 
 #define BLKSIZE 4096
 
+int dot_count = 0, dot_dot_count = 0;
 struct stat sb1, sb2;
+char catd2df1[64], catd2df2[64];
 char buf[BLKSIZE];
 
 /*********************FUNCTION DECLARATIONS********************************/
@@ -56,12 +58,21 @@ int dbname(char *pathname, char *dname, char *bname)
 /*********************************************************/
 int fileexists(char *f, struct stat *sb)
 {
-         if (stat(f, sb) == -1)
+         if (lstat(f, sb) == -1)
 	   {
 	     perror("stat");
 	     return -1;
 	   }
 	 printf("File name:                %s\n", f);
+}
+
+/*********************************************************/
+int samefile(struct stat sb1, struct stat sb2)
+{
+           if ((sb1.st_dev == sb2.st_dev) && (sb1.st_ino == sb2.st_ino))
+	     return 0;
+	   
+	   return -1;
 }
 
 /*********************************************************/
@@ -98,17 +109,22 @@ int myrcp(char *f1, char *f2)
 	       {
 		 printf("file doesn't exist...making DIR\n");
 		 // mkdir and continue
-		 if (mkdir(f2, sb1.st_mode) < 0)
+		 if (mkdir(f2, 0770) < 0)
 		   {
 		     perror("mkdir");
 		     break;
 		   }
 	       }
+	     if (samefile(sb1, sb2) == 0)
+	       {
+		 printf("same dirs!\n");
+		 return 0;
+	       }
 	     
 	     switch (sb2.st_mode & S_IFMT)    // check f2
 	       {
 	       case S_IFDIR:           // if f2 is DIR
-		 return cpd2d(f1, f1);
+		 return cpd2d(f1, f2);
 		 
 	       case S_IFREG:           // if f2 is a REG File
 		 printf("can't copy DIR to FILE\n");
@@ -123,7 +139,11 @@ int myrcp(char *f1, char *f2)
 	     break;
 	   /*********************************************/
 	   case S_IFLNK:  printf("symlink\n");
-	     break;
+	     if (fileexists(f2, &sb2) < 0)
+		 printf("symfile doesn't exist...creating it\n");
+	     // creat file and continue, cpf2f will run
+	     return cpf2f(f1, f2);
+	     
 	   /*********************************************/
 	   case S_IFREG:  printf("regular file\n");
 	     if (fileexists(f2, &sb2) < 0)
@@ -142,7 +162,7 @@ int myrcp(char *f1, char *f2)
 		 return cpf2f(f1, f2);
 
 	       case S_IFLNK:
-		 break;
+		 return cpf2f(f1, f2);
 
 	       default:       printf("unknown?\n");
 		 break;
@@ -152,15 +172,6 @@ int myrcp(char *f1, char *f2)
 	   default:       printf("unknown?\n");
 	     break;
 	   }
-}
-
-/*********************************************************/
-int samefile(struct stat sb1, struct stat sb2)
-{
-           if ((sb1.st_dev == sb2.st_dev) && (sb1.st_ino == sb2.st_ino))
-	     return 0;
-	   
-	   return -1;
 }
 
 /*********************************************************/
@@ -185,19 +196,10 @@ int cpf2f(char *f1, char *f2)
 
 	  if ((sb1.st_mode & S_IFMT) == S_IFLNK)
 	    {
-	      if (fileexists(f2, &sb2))
-		{
-		  perror("stat");
-		  printf("f1 is LNK and f2 exists\n");
-		  return -1;
-		}
-	      else  // f2 doesn't exists
-		{
-		  printf("f2 doesn't exist...making f2 as LNK to f1\n");
-		  if(link(f1, f2))
-		    perror("link");
-		  return 0;
-		}
+	      printf("f2 doesn't exist...making f2 as LNK to f1\n");
+	      if(link(f1, f2))
+		perror("link");
+	      return 0;
 	    }
 	  int fd, gd;
 	  int n, total=0;
@@ -235,22 +237,24 @@ int cpf2d(char *f1, char *f2)
 	   strcat(catf2, "/");
 	   strcat(catf2, f1bname);    // adding f1 to the path of DIR f2
 	   
-	   struct dirent *ep = (struct dirent *)malloc(sizeof(struct dirent));       // use direct to search directories
+	   struct dirent *ep;       // use dirent to search directories
 	   DIR *dp = opendir(f2);   // open the DIR 'f2'
 	   while (ep = readdir(dp))
 	     {
 	       if (strcmp(f1bname, ep->d_name) == 0)
 		 {
 		   printf("%s already exists in %s\n", f1, f2);
-		   break;
-		 }
-	       else
-		 {
-		   printf("%s DOES NOT exists in %s\n", f1, f2);
-		   cpf2f(f1, catf2);
-		   break;
+		   if ((sb2.st_mode & S_IFMT) == S_IFREG)
+		     return cpf2f(f1, catf2);
+		   else if ((sb2.st_mode & S_IFMT) == S_IFDIR)
+		     return cpf2d(f1, catf2);
 		 }
 	     }
+	   closedir(dp);
+	   
+	   // we now know that f1 doesn't exist in f2
+	   printf("%s DOES NOT exists in %s\n", f1, f2);
+	   cpf2f(f1, catf2);
 }
 
 /*********************************************************/
@@ -258,4 +262,42 @@ int cpd2d(char *f1, char *f2)
 {
            // recursively cp dir into dir
            printf("cpd2d running....\n");
+
+	   strcpy(catd2df1, f2);
+	   strcat(catd2df1, "/");
+	   strcat(catd2df1, f1);
+	   mkdir(catd2df1, 0770);
+
+	   struct stat sbd3;
+	   struct dirent *ep;
+	   DIR *dp = opendir(f1);
+	   
+	   strcpy(catd2df2, f1);
+	   while (ep = readdir(dp))
+	     {
+	       printf("name=%s \n", ep->d_name);
+
+	       if (dot_count == 1 | dot_dot_count == 1)
+		 continue;
+	       
+	       if (strcmp(ep->d_name, "..") == 0)
+		   dot_dot_count++;
+
+	       if (strcmp(ep->d_name, ".") == 0)
+		   dot_count++;
+		 
+	       if (fileexists(ep->d_name, &sbd3) < 0)
+		 {
+		   printf("file doesn't exist, move on...\n");
+		   continue;
+		 }
+		   strcat(catd2df2, "/");
+		   strcat(catd2df2, ep->d_name);
+	       if ((sbd3.st_mode & S_IFMT) == S_IFDIR)
+		 cpd2d(catd2df2, f1);
+	       else if ((sbd3.st_mode & S_IFMT) == S_IFREG)
+		 cpf2d(catd2df2, f1);
+	       else
+		 printf("no idea wth is going on\n");
+	     }
 }
