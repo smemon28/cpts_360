@@ -9,6 +9,7 @@
 #include <string.h>      // for strcpy(), strcmp(), etc.
 #include <libgen.h>      // for basename(), dirname()
 #include <fcntl.h>       // for open(), close(), read(), write()
+#include <errno.h>
 
 // for stat syscalls
 #include <sys/stat.h>
@@ -109,7 +110,7 @@ int myrcp(char *f1, char *f2)
 	       {
 		 printf("file doesn't exist...making DIR\n");
 		 // mkdir and continue
-		 if (mkdir(f2, 0770) < 0)
+		 if (mkdir(f2, 0766) < 0)
 		   {
 		     perror("mkdir");
 		     break;
@@ -263,40 +264,45 @@ int cpd2d(char *f1, char *f2)
            // recursively cp dir into dir
            printf("cpd2d running....\n");
 
+	   int r;
+
 	   strcpy(catd2df1, f2);
 	   strcat(catd2df1, "/");
 	   strcat(catd2df1, f1);
-	   mkdir(catd2df1, 0770);
+	   r = mkdir(catd2df1, 0766);
+	   if (r < 0)
+	     {
+	       printf("errno=%d : %s\n", errno, strerror(errno));
+	       return 0;
+	     }
+	   //r = chdir(catd2df1); // cd into newdir
 
 	   struct stat sbd3;
 	   struct dirent *ep;
 	   DIR *dp = opendir(f1);
 	   
-	   strcpy(catd2df2, f1);
+	   //strcpy(catd2df2, f1);
 	   while (ep = readdir(dp))
 	     {
 	       printf("name=%s \n", ep->d_name);
-
-	       if (dot_count == 1 | dot_dot_count == 1)
-		 continue;
 	       
 	       if (strcmp(ep->d_name, "..") == 0)
-		   dot_dot_count++;
+		 continue;
 
 	       if (strcmp(ep->d_name, ".") == 0)
-		   dot_count++;
-		 
+		 continue;
+	       
+	       r = chdir(f1);
 	       if (fileexists(ep->d_name, &sbd3) < 0)
 		 {
 		   printf("file doesn't exist, move on...\n");
 		   continue;
 		 }
-		   strcat(catd2df2, "/");
-		   strcat(catd2df2, ep->d_name);
+
 	       if ((sbd3.st_mode & S_IFMT) == S_IFDIR)
-		 cpd2d(catd2df2, f1);
+		 cpd2d(ep->d_name, catd2df1);
 	       else if ((sbd3.st_mode & S_IFMT) == S_IFREG)
-		 cpf2d(catd2df2, f1);
+		 cpf2d(ep->d_name, catd2df1);
 	       else
 		 printf("no idea wth is going on\n");
 	     }
