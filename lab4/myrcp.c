@@ -21,9 +21,7 @@
 
 #define BLKSIZE 4096
 
-int dot_count = 0, dot_dot_count = 0;
 struct stat sb1, sb2;
-char catd2df1[64], catd2df2[64];
 char buf[BLKSIZE];
 
 /*********************FUNCTION DECLARATIONS********************************/
@@ -43,6 +41,7 @@ int main(int argc, char *argv[])
 	       printf("enter filenames\n");
 	       return -1;
 	   }
+	 	 
 	 return myrcp(argv[1], argv[2]);
 }
 
@@ -263,47 +262,80 @@ int cpd2d(char *f1, char *f2)
 {
            // recursively cp dir into dir
            printf("cpd2d running....\n");
-
+	   
+	   char s[128], n[128], buff[256], *cwd;
 	   int r;
-
-	   strcpy(catd2df1, f2);
-	   strcat(catd2df1, "/");
-	   strcat(catd2df1, f1);
-	   r = mkdir(catd2df1, 0766);
+	   /*
+	   r = chdir("..");
 	   if (r < 0)
 	     {
-	       printf("errno=%d : %s\n", errno, strerror(errno));
+	       printf("chdir errno=%d : %s\n", errno, strerror(errno));
 	       return 0;
 	     }
-	   //r = chdir(catd2df1); // cd into newdir
+	    */
+	   cwd = getcwd(buff, 256);
+	   printf("cwd0 = %s\n", cwd);
+	   
+	   strcpy(s, f2);
+	   strcat(s, "/");
+	   strcat(s, f1);
+
+	   printf("mkdir = %s\n", s);
+	   r = mkdir(s, 0766);
+	   if (r < 0)
+	     {
+	       printf("mkdir errno=%d : %s\n", errno, strerror(errno));
+	       return 0;
+	     }
+
+	   r = chdir(f1);
+	   if (r < 0)
+	     {
+	       printf("chdir errno=%d : %s\n", errno, strerror(errno));
+	       return 0;
+	     }
+	   
+	   cwd = getcwd(buff, 256);
+	   printf("cwd1 = %s\n", cwd);
 
 	   struct stat sbd3;
 	   struct dirent *ep;
-	   DIR *dp = opendir(f1);
+	   DIR *dp = opendir(".");
 	   
 	   //strcpy(catd2df2, f1);
-	   while (ep = readdir(dp))
+	   while(ep = readdir(dp))
 	     {
-	       printf("name=%s \n", ep->d_name);
-	       
 	       if (strcmp(ep->d_name, "..") == 0)
 		 continue;
 
-	       if (strcmp(ep->d_name, ".") == 0)
+	       else if (strcmp(ep->d_name, ".") == 0)
 		 continue;
-	       
-	       r = chdir(f1);
-	       if (fileexists(ep->d_name, &sbd3) < 0)
-		 {
-		   printf("file doesn't exist, move on...\n");
-		   continue;
-		 }
 
-	       if ((sbd3.st_mode & S_IFMT) == S_IFDIR)
-		 cpd2d(ep->d_name, catd2df1);
-	       else if ((sbd3.st_mode & S_IFMT) == S_IFREG)
-		 cpf2d(ep->d_name, catd2df1);
 	       else
-		 printf("no idea wth is going on\n");
+		 {
+		   printf("name=%s \n", ep->d_name);
+		   break;
+		 }
 	     }
+	       
+	   if (fileexists(ep->d_name, &sbd3) < 0)
+	     {
+	       printf("file doesn't exist, move on...\n");
+	       return 0;
+	     }
+	   
+	   r = chdir("..");
+	   if (r < 0)
+	     {
+	       printf("chdir errno=%d : %s\n", errno, strerror(errno));
+	       return 0;
+	     }
+	   
+	   if ((sbd3.st_mode & S_IFMT) == S_IFDIR)
+	     cpd2d(ep->d_name, s);
+	   else if ((sbd3.st_mode & S_IFMT) == S_IFREG)
+	     cpf2d(ep->d_name, s);
+	   else
+	     printf("no other file types supported fo now\n");
+	     
 }
