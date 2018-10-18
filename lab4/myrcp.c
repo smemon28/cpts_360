@@ -22,7 +22,7 @@
 #define BLKSIZE 4096
 
 struct stat sb1, sb2;
-char buf[BLKSIZE];
+char buf[BLKSIZE], *cwd, buff[256];
 
 /*********************FUNCTION DECLARATIONS********************************/
 int dbname(char *pathname, char *dname, char *bname);
@@ -48,11 +48,11 @@ int main(int argc, char *argv[])
 /*********************************************************/
 int dbname(char *pathname, char *dname, char *bname)
 {
-  char temp[128]; // dirname(), basename() destroy original pathname
-  strcpy(temp, pathname);
-  strcpy(dname, dirname(temp));
-  strcpy(temp, pathname);
-  strcpy(bname, basename(temp));
+         char temp[128]; // dirname(), basename() destroy original pathname
+	 strcpy(temp, pathname);
+	 strcpy(dname, dirname(temp));
+	 strcpy(temp, pathname);
+	 strcpy(bname, basename(temp));
 }
 
 /*********************************************************/
@@ -188,6 +188,9 @@ int cpf2f(char *f1, char *f2)
 	    copy f1 to f2
 	  */
           printf("cpf2f running....\n");
+	  cwd = getcwd(buff, 256);
+	  printf("cwd = %s\n", cwd);
+	  
 	  if (samefile(sb1, sb2) == 0)
 	    {
 	      printf("same file!\n");
@@ -205,6 +208,12 @@ int cpf2f(char *f1, char *f2)
 	  int n, total=0;
 
 	  fd = open(f1, O_RDONLY);
+	  if (fd < 0)
+	    {
+	      printf("open errno=%d : %s\n", errno, strerror(errno));
+	      return 0;
+	    }
+	  
 	  gd = open(f2, O_WRONLY|O_CREAT|O_TRUNC, sb1.st_mode);
 
 	  while (n = read(fd, buf, BLKSIZE))
@@ -239,6 +248,12 @@ int cpf2d(char *f1, char *f2)
 	   
 	   struct dirent *ep;       // use dirent to search directories
 	   DIR *dp = opendir(f2);   // open the DIR 'f2'
+	   if (!dp)
+	     {
+	       printf("errno=%d : %s\n", errno, strerror(errno));
+	       return 0;
+	     }
+	   
 	   while (ep = readdir(dp))
 	     {
 	       if (strcmp(f1bname, ep->d_name) == 0)
@@ -263,22 +278,22 @@ int cpd2d(char *f1, char *f2)
            // recursively cp dir into dir
            printf("cpd2d running....\n");
 	   
-	   char s[128], n[128], buff[256], *cwd;
+	   char f1dname[64], f1bname[64], f2dname[64], f2bname[64];        // for dirname and basename
+	   
+	   char s[128], n[128];
 	   int r;
-	   /*
-	   r = chdir("..");
-	   if (r < 0)
-	     {
-	       printf("chdir errno=%d : %s\n", errno, strerror(errno));
-	       return 0;
-	     }
-	    */
+
+	   dbname(f1, f1dname, f1bname);
+	   printf("f1   dname: %s, bname: %s\n", f1dname, f1bname);
+	   dbname(f2, f2dname, f2bname);
+	   printf("f2   dname: %s, bname: %s\n", f2dname, f2bname);
+	   
 	   cwd = getcwd(buff, 256);
 	   printf("cwd0 = %s\n", cwd);
 	   
 	   strcpy(s, f2);
 	   strcat(s, "/");
-	   strcat(s, f1);
+	   strcat(s, f1bname);
 
 	   printf("mkdir = %s\n", s);
 	   r = mkdir(s, 0766);
@@ -288,21 +303,15 @@ int cpd2d(char *f1, char *f2)
 	       return 0;
 	     }
 
-	   r = chdir(f1);
-	   if (r < 0)
+	   struct stat sbd3;
+	   struct dirent *ep;
+	   DIR *dp = opendir(f1);
+	   if (!dp)
 	     {
-	       printf("chdir errno=%d : %s\n", errno, strerror(errno));
+	       printf("errno=%d : %s\n", errno, strerror(errno));
 	       return 0;
 	     }
 	   
-	   cwd = getcwd(buff, 256);
-	   printf("cwd1 = %s\n", cwd);
-
-	   struct stat sbd3;
-	   struct dirent *ep;
-	   DIR *dp = opendir(".");
-	   
-	   //strcpy(catd2df2, f1);
 	   while(ep = readdir(dp))
 	     {
 	       if (strcmp(ep->d_name, "..") == 0)
@@ -311,31 +320,22 @@ int cpd2d(char *f1, char *f2)
 	       else if (strcmp(ep->d_name, ".") == 0)
 		 continue;
 
-	       else
+	       printf("name=%s \n", ep->d_name);
+
+	       strcpy(n, f1);
+	       strcat(n, "/");
+	       strcat(n, ep->d_name);
+	       if (fileexists(n, &sbd3) < 0)
 		 {
-		   printf("name=%s \n", ep->d_name);
-		   break;
+		   printf("file doesn't exist, move on...\n");
+		   return 0;
 		 }
+
+	       if ((sbd3.st_mode & S_IFMT) == S_IFDIR)
+		 cpd2d(n, s);
+	       else //if ((sbd3.st_mode & S_IFMT) == S_IFREG)
+		 cpf2d(n, s);
+	       //else
+	       //printf("no other file types supported fo now\n");
 	     }
-	       
-	   if (fileexists(ep->d_name, &sbd3) < 0)
-	     {
-	       printf("file doesn't exist, move on...\n");
-	       return 0;
-	     }
-	   
-	   r = chdir("..");
-	   if (r < 0)
-	     {
-	       printf("chdir errno=%d : %s\n", errno, strerror(errno));
-	       return 0;
-	     }
-	   
-	   if ((sbd3.st_mode & S_IFMT) == S_IFDIR)
-	     cpd2d(ep->d_name, s);
-	   else if ((sbd3.st_mode & S_IFMT) == S_IFREG)
-	     cpf2d(ep->d_name, s);
-	   else
-	     printf("no other file types supported fo now\n");
-	     
 }
