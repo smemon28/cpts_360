@@ -278,10 +278,27 @@ int cpd2d(char *f1, char *f2)
            // recursively cp dir into dir
            printf("cpd2d running....\n");
 	   
-	   char f1dname[64], f1bname[64], f2dname[64], f2bname[64];        // for dirname and basename
-	   
+	   char f1dname[64], f1bname[64], f2dname[64], f2bname[64];
 	   char s[128], n[128];
 	   int r;
+
+	   /***********SAME DIR CHECK***************/
+	   struct stat sbx, sby;
+	   char f2y[100];
+	   strcpy(f2y, f2);
+	   lstat(f1, &sbx);
+	   strcat(f2y, "/..");
+	   
+	   while(lstat(f2y, &sby) == 0)
+	     {
+	       if ((sbx.st_dev == sby.st_dev) && (sbx.st_ino == sby.st_ino))
+		 {
+		   printf("can't copy to same DIR\n");
+		   return 0;
+		 }
+	       strcat(f2y, "/..");
+	     }
+	   /***************************************/
 
 	   dbname(f1, f1dname, f1bname);
 	   printf("f1   dname: %s, bname: %s\n", f1dname, f1bname);
@@ -333,9 +350,7 @@ int cpd2d(char *f1, char *f2)
 
 	       if ((sbd3.st_mode & S_IFMT) == S_IFDIR)
 		 cpd2d(n, s);
-	       else //if ((sbd3.st_mode & S_IFMT) == S_IFREG)
+	       else
 		 cpf2d(n, s);
-	       //else
-	       //printf("no other file types supported fo now\n");
 	     }
 }
