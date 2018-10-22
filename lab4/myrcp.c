@@ -21,11 +21,12 @@
 
 #define BLKSIZE 4096
 
-struct stat sb1, sb2;
+struct stat sb1, sb2, sbd3;  // sbd3 for cpd2d, for entities under directory
 char buf[BLKSIZE], *cwd, buff[256];
 
 /*********************FUNCTION DECLARATIONS********************************/
 int dbname(char *pathname, char *dname, char *bname);
+int samedirs(char *f1, char *f2);
 int fileexists(char *f1, struct stat *sb);
 int myrcp(char *f1, char *f2);
 int cpf2f(char *f1, char *f2);
@@ -64,6 +65,28 @@ int fileexists(char *f, struct stat *sb)
 	     return -1;
 	   }
 	 printf("File name:                %s\n", f);
+}
+
+int samedirs(char *f1, char *f2)
+{
+	   struct stat sbx, sby;
+	   char f2y[100];
+	   strcpy(f2y, f2);
+	   lstat(f1, &sbx);
+	   strcat(f2y, "/..");
+	   
+	   while(lstat(f2y, &sby) == 0)
+	     {
+	       if ((sbx.st_dev == sby.st_dev) && (sbx.st_ino == sby.st_ino))
+		 {
+		   printf("can't copy to same DIR\n");
+		   return -1;
+		 }
+	       else if (sby.st_ino == 2)  // when root is reached
+		 break;
+	       strcat(f2y, "/..");
+	     }
+	   return 0;
 }
 
 /*********************************************************/
@@ -114,6 +137,7 @@ int myrcp(char *f1, char *f2)
 		     perror("mkdir");
 		     break;
 		   }
+		 lstat(f2, &sb2);
 	       }
 	     if (samefile(sb1, sb2) == 0)
 	       {
@@ -124,7 +148,10 @@ int myrcp(char *f1, char *f2)
 	     switch (sb2.st_mode & S_IFMT)    // check f2
 	       {
 	       case S_IFDIR:           // if f2 is DIR
-		 return cpd2d(f1, f2);
+		 {
+		   if (samedirs(f1,f2) < 0) break;
+		   return cpd2d(f1, f2);
+		 }
 		 
 	       case S_IFREG:           // if f2 is a REG File
 		 printf("can't copy DIR to FILE\n");
@@ -197,7 +224,7 @@ int cpf2f(char *f1, char *f2)
 	      return 0;
 	    }
 
-	  if ((sb1.st_mode & S_IFMT) == S_IFLNK)
+	  if ((sb1.st_mode & S_IFMT) == S_IFLNK || (sbd3.st_mode & S_IFMT) == S_IFLNK)
 	    {
 	      printf("f2 doesn't exist...making f2 as LNK to f1\n");
 	      if(link(f1, f2))
@@ -238,6 +265,9 @@ int cpf2d(char *f1, char *f2)
 	       //      if f2/x is a DIR  ==> cpf2d(f1, f2/x)
 	     */
            printf("cpf2d running....\n");
+	   cwd = getcwd(buff, 256);
+	   printf("cwd = %s\n", cwd);
+	   
 	   char f1dname[64], f1bname[64], f2dname[64], f2bname[64], catf2[64];        // for dirname and basename
 	   dbname(f1, f1dname, f1bname);
 	   dbname(f2, f2dname, f2bname);
@@ -282,45 +312,11 @@ int cpd2d(char *f1, char *f2)
 	   char s[128], n[128];
 	   int r;
 
-	   /***********SAME DIR CHECK***************/
-	   struct stat sbx, sby;
-	   char f2y[100];
-	   strcpy(f2y, f2);
-	   lstat(f1, &sbx);
-	   strcat(f2y, "/..");
-	   
-	   while(lstat(f2y, &sby) == 0)
-	     {
-	       if ((sbx.st_dev == sby.st_dev) && (sbx.st_ino == sby.st_ino))
-		 {
-		   printf("can't copy to same DIR\n");
-		   return 0;
-		 }
-	       strcat(f2y, "/..");
-	     }
-	   /***************************************/
-
 	   dbname(f1, f1dname, f1bname);
 	   printf("f1   dname: %s, bname: %s\n", f1dname, f1bname);
 	   dbname(f2, f2dname, f2bname);
 	   printf("f2   dname: %s, bname: %s\n", f2dname, f2bname);
 	   
-	   cwd = getcwd(buff, 256);
-	   printf("cwd0 = %s\n", cwd);
-	   
-	   strcpy(s, f2);
-	   strcat(s, "/");
-	   strcat(s, f1bname);
-
-	   printf("mkdir = %s\n", s);
-	   r = mkdir(s, 0766);
-	   if (r < 0)
-	     {
-	       printf("mkdir errno=%d : %s\n", errno, strerror(errno));
-	       return 0;
-	     }
-
-	   struct stat sbd3;
 	   struct dirent *ep;
 	   DIR *dp = opendir(f1);
 	   if (!dp)
@@ -347,10 +343,23 @@ int cpd2d(char *f1, char *f2)
 		   printf("file doesn't exist, move on...\n");
 		   return 0;
 		 }
-
+	       
+	       strcpy(s, f2);
+	       strcat(s, "/");
+	       strcat(s, ep->d_name);
+	       
 	       if ((sbd3.st_mode & S_IFMT) == S_IFDIR)
-		 cpd2d(n, s);
+		 {
+		   printf("mkdir = %s\n", s);
+		   r = mkdir(s, 0766);
+		   if (r < 0)
+		     {
+		       printf("mkdir errno=%d : %s\n", errno, strerror(errno));
+		       return 0;
+		     }
+		   cpd2d(n, s);
+		 }
 	       else
-		 cpf2d(n, s);
+		 cpf2d(n, f2);
 	     }
 }
