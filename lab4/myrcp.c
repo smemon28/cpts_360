@@ -119,7 +119,8 @@ int myrcp(char *f1, char *f2)
 	   return cpd2d(f1, f2);
 	   }
 	 */
-  
+         char tempf2[10];
+	 
          if (fileexists(f1, &sb1) < 0)   exit(EXIT_FAILURE);  // must exit if f1 doesn't exist
 
 	 printf("File type:                ");
@@ -138,6 +139,25 @@ int myrcp(char *f1, char *f2)
 		     break;
 		   }
 		 lstat(f2, &sb2);
+	       }
+	     else
+	       {
+		 strcpy(tempf2, f2);
+		 strcat(tempf2, "/");
+		 strcat(tempf2, f1);
+		 if (fileexists(tempf2, &sb2) < 0)
+		   {
+		     printf("file doesn't exist...making DIR\n");
+		     strcat(f2, "/");
+		     strcat(f2, f1);
+		     // mkdir and continue
+		     if (mkdir(f2, 0766) < 0)
+		       {
+			 perror("mkdir");
+			 break;
+		       }
+		     lstat(f2, &sb2);
+		   }
 	       }
 	     if (samefile(sb1, sb2) == 0)
 	       {
