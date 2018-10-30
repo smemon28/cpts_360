@@ -48,6 +48,7 @@ int tokenize(char *path)
       while (s != NULL)
 	{
 	  tkn[i] = (char *)malloc(strlen(s)*sizeof(char));
+	  memset(tkn[i], 0, strlen(s)*sizeof(char));
 	  tkn[i] = s;    // store pointer to token in *tkn[] array  
 	  s = strtok(0, "/");
 	  i++;
@@ -126,12 +127,16 @@ int dirp()
 	ip = (INODE *)ibuf + offset;    // ip -> new INODE
       }
 }
-/*
+
 void init()
 {
-      *tkn = (char *)malloc(64*sizeof(char));
+      for (int i = 0; i < 64; i++)
+	{
+	  tkn[i] = (char *)malloc(20*sizeof(char));
+	  memset(tkn[i], 0, 20*sizeof(char));
+	}
 }
-*/
+
 void printbanner()
 {
       printf("showblock   device   pathname\n");
