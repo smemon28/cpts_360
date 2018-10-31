@@ -22,7 +22,7 @@ DIR   *dp;
 
 #define BLKSIZE 1024
 
-char *disk, *pathname, *tkn[64];
+char *disk, *pathname, *tkn[64], temp[64];
 
 char buf[BLKSIZE];
 int fd;
@@ -40,7 +40,6 @@ int get_block(int fd, int blk, char buf[ ])
 int tokenize(char *path)
 {
       int i = 0;
-      char temp[64];
       char *s;
 
       strcpy(temp, path);
