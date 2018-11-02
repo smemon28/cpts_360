@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <fcntl.h>
 #include <ext2fs/ext2_fs.h>
 
@@ -46,8 +47,6 @@ int tokenize(char *path)
       s = strtok(temp, "/");
       while (s != NULL)
 	{
-	  tkn[i] = (char *)malloc(strlen(s)*sizeof(char));
-	  memset(tkn[i], 0, strlen(s)*sizeof(char));
 	  tkn[i] = s;    // store pointer to token in *tkn[] array  
 	  s = strtok(0, "/");
 	  i++;
@@ -102,6 +101,8 @@ int dirp()
 {
       int ino, iblock, blk, offset, n;
       char ibuf[BLKSIZE];
+      char indbuf[BLKSIZE/4], dindbuf1[256], dindbuf2[256];
+      u32 *i_dbl, *di_db1, *di_db2, i12, i13;
       
       n = tokenize(pathname);  // tokenize pathname and store in *tkn[]
       // read Group Descriptor 0
@@ -113,7 +114,7 @@ int dirp()
 
       ip = (INODE *)buf + 1; // get the 2nd INODE (or root INODE)
   
-      for (int i=0; i < n; i++){  // iterate for all the names in the path, i.e. /a/b/c -> n = 3
+      for (int i = 0; i < n; i++){  // iterate for all the names in the path, i.e. /a/b/c -> n = 3
 	ino = search(ip, tkn[i]);
 	if (ino==0){
 	  printf("can't find %s\n", tkn[i]); exit(1);
@@ -125,15 +126,34 @@ int dirp()
 	get_block(fd, blk, ibuf);
 	ip = (INODE *)ibuf + offset;    // ip -> new INODE
       }
-}
 
-void init()
-{
-      for (int i = 0; i < 64; i++)
-	{
-	  tkn[i] = (char *)malloc(20*sizeof(char));
-	  memset(tkn[i], 0, 20*sizeof(char));
-	}
+      // Print direct block numbers;
+      printf("direct blocks\n");
+      for (int i = 0; i < 12; i++)
+	printf("ino %4d blk %4d offset %4d ip->i_block[%i] %4d\n", ino, blk, offset, i, ip->i_block[i]);
+
+      i12 = ip->i_block[12];
+      i13 = ip->i_block[13];
+      
+      // Print indirect block numbers;
+      printf("in-direct blocks\n");
+      get_block(fd, i12, indbuf);
+      i_dbl = (u32 *)indbuf;
+      for (int i = 0; i < 256; i++)
+	printf("indbuf %4d\n", i_dbl[i]);
+      
+      
+      // Print double indirect block numbers, if any
+      printf("double in-direct blocks\n");
+      get_block(fd, i13, dindbuf1);
+      di_db1 = (u32 *)dindbuf1;
+      for (int i = 0; i < 256; i++){
+	get_block(fd, di_db1[i], dindbuf2);
+	di_db2 = (u32 *)dindbuf2;
+	for (int t = 0; t < 256; t++)
+	  printf(" %d ", di_db2[t]);
+	printf("\n");
+      }
 }
 
 void printbanner()
@@ -144,6 +164,11 @@ void printbanner()
 
 int main(int argc, char *argv[ ])
 {
+      if(argc < 1){
+	printf("enter disk name and pathname\n");
+	exit(1);
+      }
+      
       disk = argv[1];
       pathname = argv[2];
 
@@ -155,7 +180,6 @@ int main(int argc, char *argv[ ])
 	exit(1);
       }
 
-      //init();
       super();
       dirp();
 }
