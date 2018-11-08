@@ -32,22 +32,32 @@ DIR   *dp;
 
 // Block number of EXT2 FS on FD
 #define SUPERBLOCK   1
-#define GDBLOCK   2
+#define GDBLOCK      2
 #define ROOT_INODE   2
 
+// Default dir and regular file modes
+#define DIR_MODE     0x41ED
+#define FILE_MODE    0x81AE
+#define SUPER_MAGIC  0xEF53
+#define SUPER_USER   0
+
+// Proc status
+#define FREE         0
+#define BUSY         1
+
 typedef struct minode{
-  INODE INODE;
-  int refCount;
-  int dirty;
-  int mounted;
+  INODE      INODE;
+  int        refCount;
+  int        dirty;
+  int        mounted;
   struct mntable *mptr;
 }MINODE;
 
 typedef struct oft{
-  int  mode;
-  int  refCount;
-  MINODE *mptr;
-  int  offset;
+  int      mode;
+  int      refCount;
+  MINODE   *mptr;
+  int      offset;
 }OFT;
 
 typedef struct proc{
