@@ -20,7 +20,7 @@ PROC   proc[NPROC], *running;
 char gpath[256]; // holder of component strings in pathname
 char *name[64];  // assume at most 64 components in pathnames
 
-int  fd, dev;
+int  fd, dev, n;
 int  nblocks, ninodes, bmap, imap, iblk, inode_start;
 char line[256], cmd[32], pathname[256];
   
