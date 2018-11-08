@@ -108,11 +108,12 @@ int ls(char *pathname)
 {
         int ino, n;
 	MINODE *mip;
-        char dname[64], bname[64];
+        char dname[64], bname[64], temp[64];;
 	
 	if (strcmp(pathname, "") != 0){
-	  dbname(pathname, dname, bname);
-	  ino = getino(pathname);
+	  strcpy(temp, pathname);
+	  //dbname(temp, dname, bname);
+	  ino = getino(temp);
 	  mip = iget(fd, ino);
 	  print(mip);
 	  return 0;
@@ -204,8 +205,6 @@ int print(MINODE *mip)
  
 int quit()
 {
-        int i;
-	MINODE *mip;
 	for (i=0; i<NMINODE; i++){
 	  mip = &minode[i];
 	  if (mip->refCount > 0)
