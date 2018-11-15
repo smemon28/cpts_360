@@ -29,19 +29,19 @@ DIR   *dp;
 #define SUPER_MAGIC 0xEF53
 
 typedef struct minode{
-  INODE INODE;
-  int dev, ino;
-  int refCount;
-  int dirty;
-  int mounted;
+  INODE          INODE;
+  int            dev, ino;
+  int            refCount;
+  int            dirty;
+  int            mounted;
   struct mntable *mptr;
 }MINODE;
 
 typedef struct oft{
-  int  mode;
-  int  refCount;
-  MINODE *mptr;
-  int  offset;
+  int          mode;
+  int          refCount;
+  MINODE       *mptr;
+  int          offset;
 }OFT;
 
 typedef struct proc{
@@ -53,3 +53,17 @@ typedef struct proc{
   MINODE      *cwd;
   OFT         *fd[NFD];
 }PROC;
+
+typedef struct mtable{
+  int       dev;            // device number; 0 for FREE
+  int       ninodes;        // from superblock
+  int       nblocks;
+  int       free_blocks;    // from superblock and GD
+  int       free_inodes;
+  int       bmap;           // from group descriptor
+  int       imap;
+  int       iblock;         // inodes start block
+  MINODE    *mntDirPtr;     // mount point DIR pointer
+  char      devName[64];    // device name
+  char      mntName[64];    // mount point DIR name
+}MTABLE;
