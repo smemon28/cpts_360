@@ -3,6 +3,8 @@
         "stdio.h": "c",
         "stdlib.h": "c",
         "ext2_fs.h": "c",
-        "type.h": "c"
+        "type.h": "c",
+        "stat.h": "c",
+        "string.h": "c"
     }
 }

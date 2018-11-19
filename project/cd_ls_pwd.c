@@ -1,6 +1,7 @@
 /****************************************************************************
 *                   cd, ls, pwd Program                                      *
 *****************************************************************************/
+/*******************
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -10,8 +11,14 @@
 #include <sys/stat.h>
 
 #include "type.h"
+*********************/
 
 /**** globals defined in main.c file ****/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ext2fs/ext2_fs.h>
+#include "type.h"
 
 extern MINODE minode[NMINODE];
 extern MINODE *root;
@@ -47,7 +54,6 @@ int print(MINODE *mip)
 			temp[dp->name_len] = 0; // removing end of str delimiter '/0', why tho?
 			// make dp->name a string in temp[ ]
 			printf("%2d %12d %12d %12s\n", dp->inode, dp->rec_len, dp->name_len, temp);
-
 			cp += dp->rec_len;
 			dp = (DIR *)cp;
 		}
@@ -133,9 +139,12 @@ int rpwd(MINODE *wd)
 	char *cp, my_name[EXT2_NAME_LEN], buf[BLKSIZE];
 	DIR *dp;
 	MINODE *pip;
-
+	/*
 	my_ino = search(&wd->INODE, ".");
 	parent_ino = search(&wd->INODE, "..");
+	*/
+	my_ino = search(wd, ".");
+	parent_ino = search(wd, "..");
 
 	pip = iget(dev, parent_ino);
 	get_block(dev, pip->INODE.i_block[0], buf);

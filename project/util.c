@@ -1,3 +1,4 @@
+/****************
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -7,13 +8,19 @@
 #include <sys/stat.h>
 
 #include "type.h"
-
+**************/
 /**** globals defined in main.c file ****/
+#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ext2fs/ext2_fs.h>
+#include "type.h"
 
 extern MINODE minode[NMINODE];
 extern MINODE *root;
 extern PROC   proc[NPROC], *running;
-extern char gpath[128];
+extern char gpath[256];
 extern char *name[64];
 extern int n;
 extern int fd, dev;
@@ -38,7 +45,7 @@ int put_block(int dev, int blk, char *buf)
 MINODE* mialloc()   // allocate a free inode
 {
     int i;
-    for (int i = 0; i<NMINODE; i++){
+    for (i = 0; i<NMINODE; i++){
         MINODE *mp = &minode[i];
         if (mp->refCount == 0){
             mp->refCount = 1;
@@ -56,6 +63,8 @@ int midalloc(MINODE *mip)   // release a used minode
                         // locked anymore
 }
 
+// this function returns a pointer to the in-memory minode containing
+// the INODE of (dev, ino). If not found then allocate a new minode
 MINODE* iget(int dev, int ino)
 {
     MINODE *mip;
@@ -65,9 +74,9 @@ MINODE* iget(int dev, int ino)
     char buf[BLKSIZE];
 
     // search in-memory minodes first
-    for (int i = 0; i<NMINODE; i++){
+    for (i = 0; i<NMINODE; i++){
         MINODE *mip = &minode[i];
-        if (mip->refCount == 0 && 
+        if (mip->refCount  && 
            (mip->dev == dev)  &&
            (mip->ino == ino)){
             mip->refCount++;
@@ -93,6 +102,11 @@ MINODE* iget(int dev, int ino)
     return mip;
 }
 
+// This function releases a used minode pointed by mip. Each minode
+// has a refCount, which represents the number of users that are
+// using the minode, iput() decrements refCount by 1. If caller is
+// last user (i.e. refCount 0 after decrement) AND modified (dirty)
+// the INODE is written back to disk
 int iput(MINODE *mip)
 {
     INODE *ip;
@@ -137,8 +151,8 @@ int search(MINODE *mip, char *name)
 // return its inode number if found; 0 if not.
 {
     char *cp, dbuf[BLKSIZE], temp[256];
-     
-    for (int i=0; i < 12; i++){  // assuming only 12 entries
+    int i;     
+    for (i=0; i < 12; i++){  // assuming only 12 entries
         if (mip->INODE.i_block[i] == 0)
             return 0;
 
@@ -146,10 +160,11 @@ int search(MINODE *mip, char *name)
         dp = (DIR *)dbuf;
         cp = dbuf;
         
+        printf("inode       rec len       name len       name\n");
         while (cp < dbuf + BLKSIZE){
             strncpy(temp, dp->name, dp->name_len);
             temp[dp->name_len] = 0;
-            printf("%4d %4d %4d %s\n", 
+            printf("%10d %10d %10d %5s\n", 
                 dp->inode, dp->rec_len, dp->name_len, temp);
             if (strcmp(name, temp) == 0){
                 printf("found %s : inumber = %d\n", name, dp->inode);
@@ -171,14 +186,18 @@ int getino(char *pathname)
     
     if (strcmp(pathname, "/") == 0)
         return 2;    // return ino of root, i.e. 2
-    if (pathname[0], '/')
+    if (pathname[0] == '/'){      
         mip = root;
-    else
+        printf("mip=root\n");
+    }
+    else{
         mip = running->cwd;
+        printf("mip=running->cwd dev:%d ino:%d", mip->dev, mip->ino);
+    }
 
     n = tokenize(pathname);  // tokenize pathname and store in *tkn[]
 
-    for (int i = 0; i < n; i++){  // iterate for all the names in the path, i.e. /a/b/c -> n = 3
+    for (i = 0; i < n; i++){  // iterate for all the names in the path, i.e. /a/b/c -> n = 3
         if (!S_ISDIR(mip->INODE.i_mode)){
             printf("%s is not a directory\n", name[i]);
             iput(mip);

@@ -24,10 +24,8 @@ int fd, dev, n;
 int nblocks, ninodes, bmap, imap, iblk;
 char line[256], cmd[32], pathname[256];
 
-/******* WRITE YOUR OWN util.c and others ***********
 #include "util.c"
-
-***************************************************/
+#include "cd_ls_pwd.c"
 
 int init()
 {
@@ -93,9 +91,21 @@ int mount_root()
 	/*
 	 (3). root = iget(dev, 2);       // get #2 INODE into minode[ ]
 	 printf("mounted root OK\n");
-       */
+	*/
+
 	root = iget(dev, 2);
+	printf("root=%x dev=%d, ino=%d\n", root, root->dev, root->ino);
 	printf("mounted root OK\n");
+}
+
+void reset()
+{
+	int i;
+	for (i=0; i<256; i++)
+		pathname[i] = 0;
+
+	for (i=0; i<64; i++)
+		name[i] = 0;
 }
 
 int main(int argc, char *argv[])
@@ -148,5 +158,7 @@ int main(int argc, char *argv[])
 
 		if (strcmp(cmd, "quit") == 0)
 			quit();
+		
+		reset();
 	}
 }

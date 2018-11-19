@@ -1,4 +1,7 @@
 /*************** type.h file ************************/
+#ifndef TYPE_HEADER
+#define TYPE_HEADER
+
 typedef unsigned char  u8;
 typedef unsigned short u16;
 typedef unsigned int   u32;
@@ -67,3 +70,7 @@ typedef struct mtable{
   char      devName[64];    // device name
   char      mntName[64];    // mount point DIR name
 }MTABLE;
+
+//extern print(MINODE *mip);
+
+#endif
