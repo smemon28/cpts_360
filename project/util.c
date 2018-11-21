@@ -64,11 +64,10 @@ int midalloc(MINODE *mip)   // release a used minode
 }
 
 // this function returns a pointer to the in-memory minode containing
-// the INODE of (dev, ino). If not found then allocate a new minode
+// the INODE of (dev, ino). If NOT found then allocate a new minode
 MINODE* iget(int dev, int ino)
 {
-    MINODE *mip;
-    MTABLE *mp;
+    //MTABLE *mp;
     INODE *ip;
     int i, block, offset;
     char buf[BLKSIZE];
@@ -76,13 +75,13 @@ MINODE* iget(int dev, int ino)
     // search in-memory minodes first
     for (i = 0; i<NMINODE; i++){
         MINODE *mip = &minode[i];
-        if (mip->refCount  && 
-           (mip->dev == dev)  &&
-           (mip->ino == ino)){
+        if (mip->refCount  && (mip->dev == dev)  && (mip->ino == ino)){
             mip->refCount++;
             return mip;
            }
     }
+
+    MINODE *mip;
     // needed INODE=(dev, ino) not in memory
     mip = mialloc();          // allocate a free minode
     mip->dev = dev; mip->ino = ino;  // assign to (dev, ino)

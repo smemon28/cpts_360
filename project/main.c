@@ -95,6 +95,16 @@ int mount_root()
 
 	root = iget(dev, 2);
 	printf("root=%x dev=%d, ino=%d\n", root, root->dev, root->ino);
+	printf("root refCount = %d\n", root->refCount);
+
+	printf("creating P0 as running process\n");
+	
+	proc[0].status = READY;
+	proc[0].cwd = iget(dev, 2);
+	running = &proc[0];
+	// set proc[1]'s cwd to root also
+	proc[1].cwd = iget(dev, 2);
+
 	printf("mounted root OK\n");
 }
 
@@ -125,13 +135,6 @@ int main(int argc, char *argv[])
 
 	init();
 	mount_root();
-	printf("root refCount = %d\n", root->refCount);
-
-	printf("creating P0 as running process\n");
-	running = &proc[0];
-	running->status = READY;
-	running->cwd = iget(dev, 2);
-	// set proc[1]'s cwd to root also
 	printf("root refCount = %d\n", root->refCount);
 
 	while (1)
