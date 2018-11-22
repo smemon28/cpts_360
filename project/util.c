@@ -1,14 +1,3 @@
-/****************
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <ext2fs/ext2_fs.h>
-#include <string.h>
-#include <libgen.h>
-#include <sys/stat.h>
-
-#include "type.h"
-**************/
 /**** globals defined in main.c file ****/
 #include <sys/stat.h>
 #include <stdio.h>
@@ -27,7 +16,7 @@ extern int fd, dev;
 extern int nblocks, ninodes, bmap, imap, iblk;
 extern char line[256], cmd[32], pathname[256];
 
-
+/*************************FUNCTIONS*******************************/
 int get_block(int dev, int blk, char *buf)
 {
     lseek(dev, (long)blk*BLKSIZE, 0);
@@ -94,7 +83,7 @@ MINODE* iget(int dev, int ino)
     mip->INODE = *ip;    // this is where inode on disk is placed in memory
     
     // initialize minode
-    mip->refCount = 1;
+    mip->refCount = 2;
     mip->mounted = 0;
     mip->dirty = 0;
     mip->mptr = 0;
