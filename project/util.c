@@ -120,18 +120,18 @@ int iput(MINODE *mip)
 
 int tokenize(char *path)
 {
-      int i = 0;
-      char *s;
+    int i = 0;
+    char *s;
 
-      strcpy(gpath, path);
-      s = strtok(gpath, "/");
-      while (s != NULL)
+    strcpy(gpath, path);
+    s = strtok(gpath, "/");
+    while (s != NULL)
 	{
-	  name[i] = s;    // store pointer to token in *name[] array  
-	  s = strtok(0, "/");
-	  i++;
+        name[i] = s;    // store pointer to token in *name[] array  
+        s = strtok(0, "/");
+        i++;
 	}
-      return i;
+    return i;
 }
 
 int search(MINODE *mip, char *name)

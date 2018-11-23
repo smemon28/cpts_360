@@ -26,6 +26,7 @@ char line[256], cmd[32], pathname[256];
 
 #include "util.c"
 #include "cd_ls_pwd.c"
+#include "ialloc_balloc.c"
 
 int init()
 {
@@ -57,9 +58,9 @@ int init()
 int mount_root()
 {
 	char buf[BLKSIZE];
-	SUPER *sp;
-	GD *gp;
-	MINODE mip;
+	//SUPER *sp;
+	//GD *gp;
+	//MINODE mip;
 
 	printf("mount_root()\n");
 	/*
@@ -136,6 +137,8 @@ int main(int argc, char *argv[])
 	init();
 	mount_root();
 	printf("root refCount = %d\n", root->refCount);
+	pimap();
+	pbmap();
 
 	while (1)
 	{
