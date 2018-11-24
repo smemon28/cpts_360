@@ -83,27 +83,104 @@ int mymkdir(MINODE *pip, char *name)
 {
     MINODE *mip;
     int ino, bno, i;
-    char buf[BLKSIZE];
+    char *cp, buf[BLKSIZE];
+    DIR *dp;
 
     ino = ialloc(dev);  // get new inode num
     bno = balloc(dev);  // get new block
 
     // to load the inode into a minode[] (in order to write contents to the INODE in memory)
     mip = iget(dev, ino);
-  INODE *ip = &mip->INODE;
-  //Use ip-> to acess the INODE fields:
+    INODE *ip = &mip->INODE;
+    //Use ip-> to acess the INODE fields:
 
-  ip->i_mode = 0x41ED;		// OR 040755: DIR type and permissions
-  ip->i_uid  = running->uid;	// Owner uid 
-  ip->i_gid  = running->gid;	// Group Id
-  ip->i_size = BLKSIZE;		// Size in bytes 
-  ip->i_links_count = 2;	        // Links count=2 because of . and ..
-  ip->i_atime = ip->i_ctime = ip->i_mtime = time(0L);  // set to current time
-  ip->i_blocks = 2;                	// LINUX: Blocks count in 512-byte chunks 
-  ip->i_block[0] = bno;             // new DIR has one data block   
-  for (i=1; i<15; i++)
-      ip->i_block[i] = 0;
+    ip->i_mode = 0x41ED;		// OR 040755: DIR type and permissions
+    ip->i_uid  = running->uid;	// Owner uid 
+    ip->i_gid  = running->gid;	// Group Id
+    ip->i_size = BLKSIZE;		// Size in bytes 
+    ip->i_links_count = 2;	        // Links count=2 because of . and ..
+    ip->i_atime = ip->i_ctime = ip->i_mtime = time(0L);  // set to current time
+    ip->i_blocks = 2;                	// LINUX: Blocks count in 512-byte chunks 
+    ip->i_block[0] = bno;             // new DIR has one data block   
+    for (i=1; i<15; i++)
+        ip->i_block[i] = 0;
 
-  mip->dirty = 1;               // mark minode dirty
-  iput(mip);                    // write INODE to disk
+    mip->dirty = 1;               // mark minode dirty
+    iput(mip);                    // write INODE to disk
+
+    get_block(dev, ip->i_block[0], buf);
+    dp = (DIR *)buf;
+    cp = buf;
+
+    printf("populate new dir with .\n");   // current directory info
+    dp->inode = mip->ino;
+    dp->rec_len = 12;
+    dp->name_len = 1;
+    strncpy(dp->name, ".", dp->name_len);
+    cp += dp->rec_len;
+    dp = (DIR *)cp;
+
+    printf("populate new dir with ..\n");  // parent directory info
+    dp->inode = pip->ino;
+    dp->rec_len = 1012;
+    dp->name_len = 2;
+    strncpy(dp->name, "..", dp->name_len);
+
+    put_block(dev, ip->i_block[0], buf);
+
+    enter_name(pip, ino, name);
+}
+
+int enter_name(MINODE *pip, int myino, char *myname)
+{
+    char *cp, buf[BLKSIZE];
+    int i, need_length, remaining;
+    INODE *pinode;
+    DIR *dp;
+
+    pinode = &pip->INODE;
+    for (i=0; i<12; i++){
+        if (pinode->i_block[i] == 0) break;
+
+        need_length = 4*( (8 + strlen(myname) + 3)/4 );  // a multiple of 4
+
+        // step to LAST entry in block: int blk = parent->INODE.i_block[i];
+        // which is equivalent to pinode->i_block[i];
+        get_block(dev, pinode->i_block[i], buf);  // get disk block
+        dp = (DIR *)buf;
+        cp = buf;
+
+        printf("step to LAST entry in data block %d\n", pinode->i_block[i]);
+        while (cp + dp->rec_len < buf + BLKSIZE){
+            /****** Technique for printing, compare, etc.******/
+            char c;
+            c = dp->name[dp->name_len];
+            dp->name[dp->name_len] = 0;
+            printf("%s ", dp->name);
+            dp->name[dp->name_len] = c;
+            /***********************************/
+            cp += dp->rec_len;
+            dp = (DIR *)cp;
+        }
+        printf("\n");
+        // dp NOW points at last entry in block
+        // remain = LAST entry's rec_len - last entry IDEAL_LENGTH;
+        int ideal_len = 4*( (8 + dp->name_len + 3)/4 );
+        remaining = dp->rec_len - ideal_len;
+
+        if (remaining > need_length) {
+            dp->rec_len = ideal_len;    // update rec_len of last entry - will become 2nd to last now
+            cp += dp->rec_len;
+            dp = (DIR *)cp;
+
+            dp->inode = myino;
+            dp->rec_len = remaining;    // remining bytes are assigned to added entry (now last)
+            dp->name_len = need_length;
+            strncpy(dp->name, myname, dp->name_len);
+        }
+        else {
+            //#5
+        }
+        put_block(dev, pinode->i_block[i], buf);
+    }
 }

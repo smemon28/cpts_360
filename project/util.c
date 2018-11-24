@@ -144,7 +144,7 @@ int search(MINODE *mip, char *name)
         if (mip->INODE.i_block[i] == 0)
             return 0;
 
-        get_block(fd, mip->INODE.i_block[i], dbuf);  // get disk block
+        get_block(dev, mip->INODE.i_block[i], dbuf);  // get disk block
         dp = (DIR *)dbuf;
         cp = dbuf;
         

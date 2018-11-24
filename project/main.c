@@ -27,6 +27,7 @@ char line[256], cmd[32], pathname[256];
 #include "util.c"
 #include "cd_ls_pwd.c"
 #include "ialloc_balloc.c"
+#include "mkdir.c"
 
 int init()
 {
@@ -145,13 +146,9 @@ int main(int argc, char *argv[])
 
 	while (1)
 	{
-		printf("input command : [ls|cd|pwd|quit] ");
+		printf("input command : [ls|cd|pwd|mkdir|quit] ");
 		fgets(line, 128, stdin);
 		line[strlen(line) - 1] = 0;
-
-		//if (line[0] == 0)
-		//	continue;
-		//pathname[0] = 0;
 
 		sscanf(line, "%s %s", cmd, pathname);
 		printf("cmd=%s pathname=%s\n", cmd, pathname);
@@ -167,6 +164,9 @@ int main(int argc, char *argv[])
 
 		if (strcmp(cmd, "quit") == 0)
 			quit();
+		
+		if (strcmp(cmd, "mkdir") == 0)
+			make_dir(pathname);
 		
 		reset();
 	}
