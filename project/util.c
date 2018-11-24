@@ -83,7 +83,7 @@ MINODE* iget(int dev, int ino)
     mip->INODE = *ip;    // this is where inode on disk is placed in memory
     
     // initialize minode
-    mip->refCount = 2;
+    mip->refCount = 1;
     mip->mounted = 0;
     mip->dirty = 0;
     mip->mptr = 0;
@@ -196,9 +196,9 @@ int getino(char *pathname)
             printf("can't find %s\n", name[i]); 
             return 0;
         }
-        iput(mip);          // release current inode
+        //iput(mip);          // release current inode ->LINE COMMENTED but was present in book
         mip = iget(dev, ino);  // switch to new minode
     }
-    iput(mip);
+    //iput(mip);   ->LINE COMMENTED but was present in book
     return ino;
 }

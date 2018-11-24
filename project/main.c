@@ -117,6 +117,9 @@ void reset()
 
 	for (i=0; i<64; i++)
 		name[i] = 0;
+	
+	for (i=0; i<32; i++)
+		cmd[i] = 0;
 }
 
 int main(int argc, char *argv[])

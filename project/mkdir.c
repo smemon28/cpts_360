@@ -82,7 +82,8 @@ int make_dir(char *pathname)
 int mymkdir(MINODE *pip, char *name)
 {
     MINODE *mip;
-    int ino, bno;
+    int ino, bno, i;
+    char buf[BLKSIZE];
 
     ino = ialloc(dev);  // get new inode num
     bno = balloc(dev);  // get new block
@@ -100,8 +101,9 @@ int mymkdir(MINODE *pip, char *name)
   ip->i_atime = ip->i_ctime = ip->i_mtime = time(0L);  // set to current time
   ip->i_blocks = 2;                	// LINUX: Blocks count in 512-byte chunks 
   ip->i_block[0] = bno;             // new DIR has one data block   
-  ip->i_block[1] to i_block[14] = 0;
- 
+  for (i=1; i<15; i++)
+      ip->i_block[i] = 0;
+
   mip->dirty = 1;               // mark minode dirty
   iput(mip);                    // write INODE to disk
 }
