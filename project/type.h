@@ -71,4 +71,6 @@ typedef struct mtable{
   char      mntName[64];    // mount point DIR name
 }MTABLE;
 
+int dbname(char *pathname, char *dname, char *bname);
+
 #endif
