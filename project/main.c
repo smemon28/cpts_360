@@ -19,6 +19,9 @@ PROC proc[NPROC], *running;
 
 char gpath[256]; // holder of component strings in pathname
 char *name[64];	// assume at most 64 components in pathnames
+char *myargs[30];                 // arguments
+char argtemp[256];
+int  myargc;                       // number of arguments
 
 int fd, dev, n;
 int nblocks, ninodes, bmap, imap, iblk;
@@ -29,6 +32,23 @@ char line[256], cmd[32], pathname[256];
 #include "ialloc_balloc.c"
 #include "mkdir.c"
 #include "creat.c"
+#include "link_unlink_symlink.c"
+
+int tokArguments(char *mystr)
+{
+	char *s;
+	int i = 0;
+
+	strcpy(argtemp, mystr);
+
+	s = strtok(argtemp, " ");
+	while(s) {
+		myargs[i] = s;
+		s = strtok(0, " ");
+		i++;
+	}
+	return i;
+}
 
 int init()
 {
@@ -147,12 +167,18 @@ int main(int argc, char *argv[])
 
 	while (1)
 	{
-		printf("input command : [ls|cd|pwd|mkdir|creat|quit] ");
+		printf("input command : [ls|cd|pwd|mkdir|creat|link|quit] ");
 		fgets(line, 128, stdin);
 		line[strlen(line) - 1] = 0;
 
-		sscanf(line, "%s %s", cmd, pathname);
-		printf("cmd=%s pathname=%s\n", cmd, pathname);
+		myargc = tokArguments(line);
+		if (myargc < 3){
+			sscanf(line, "%s %s", cmd, pathname);
+			printf("cmd=%s pathname=%s\n", cmd, pathname);
+		}
+		else {
+			strcpy(cmd, myargs[0]);
+		}
 
 		if (strcmp(cmd, "ls") == 0)
 			ls(pathname);
@@ -173,7 +199,10 @@ int main(int argc, char *argv[])
 		
 		if (strcmp(cmd, "creat") == 0)
 			creat_file(pathname);
-			
+		
+		if (strcmp(cmd, "link") == 0)
+			mylink(myargs[1], myargs[2]);
+
 		reset();
 	}
 }

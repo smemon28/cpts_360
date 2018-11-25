@@ -28,7 +28,7 @@ DIR   *dp;
 #define EXT2_NAME_LEN  255
 
 #define DIR_MODE    0x41ED
-#define FILE_MODE   0x81AE
+#define FILE_MODE   0x81A4
 #define SUPER_MAGIC 0xEF53
 
 typedef struct minode{
@@ -72,5 +72,16 @@ typedef struct mtable{
 }MTABLE;
 
 int dbname(char *pathname, char *dname, char *bname);
+int iput(MINODE *mip);
+MINODE* iget(int dev, int ino);
+int getino(char *pathname);
+int search(MINODE *mip, char *name);
+int get_block(int dev, int blk, char *buf);
+int put_block(int dev, int blk, char *buf);
+
+
+int mylink(char *oldFileName, char *newFileName);
+int make_dir(char *pathname);
+int creat_file(char *pathname);
 
 #endif

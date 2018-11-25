@@ -176,11 +176,11 @@ int getino(char *pathname)
         return 2;    // return ino of root, i.e. 2
     if (pathname[0] == '/'){      
         mip = root;
-        printf("mip=root\n");
+        printf("root dev:%d ino:%d\n", mip->dev, mip->ino);
     }
     else{
         mip = running->cwd;
-        printf("mip=running->cwd dev:%d ino:%d", mip->dev, mip->ino);
+        printf("cwd dev:%d ino:%d\n", mip->dev, mip->ino);
     }
 
     n = tokenize(pathname);  // tokenize pathname and store in *tkn[]
