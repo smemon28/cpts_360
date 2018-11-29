@@ -188,6 +188,9 @@ int enter_name(MINODE *pip, int myino, char *myname)
             dp->rec_len = BLKSIZE;
             dp->name_len = need_length;
             strncpy(dp->name, myname, dp->name_len);
+            put_block(dev, pinode->i_block[i], buf);
+            return 1;  // go back cuz the dir has been added and we don't need 
+                       // to iterate to the next block
         }
         put_block(dev, pinode->i_block[i], buf);
     }

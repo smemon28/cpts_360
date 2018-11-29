@@ -31,6 +31,7 @@ char line[256], cmd[32], pathname[256];
 #include "cd_ls_pwd.c"
 #include "ialloc_balloc.c"
 #include "mkdir.c"
+#include "rmdir_nofal.c"
 #include "creat.c"
 #include "link_unlink_symlink.c"
 
@@ -199,6 +200,9 @@ int main(int argc, char *argv[])
 		
 		if (strcmp(cmd, "creat") == 0)
 			creat_file(pathname);
+		
+		if (strcmp(cmd, "rmdir") == 0)
+			remove_dir(pathname);
 		
 		if (strcmp(cmd, "link") == 0)
 			mylink(myargs[1], myargs[2]);

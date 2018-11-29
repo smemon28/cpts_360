@@ -24,6 +24,7 @@ DIR   *dp;
 #define NFD        16
 #define NMOUNT      4
 #define NPROC       2
+#define SUPER_USER  0
 
 #define EXT2_NAME_LEN  255
 
@@ -71,17 +72,26 @@ typedef struct mtable{
   char      mntName[64];    // mount point DIR name
 }MTABLE;
 
+// mkdir function declarations
 int dbname(char *pathname, char *dname, char *bname);
+int make_dir(char *pathname);
+int mymkdir(MINODE *pip, char *name);
+int enter_name(MINODE *pip, int myino, char *myname);
+// util function declarations
 int iput(MINODE *mip);
 MINODE* iget(int dev, int ino);
 int getino(char *pathname);
 int search(MINODE *mip, char *name);
 int get_block(int dev, int blk, char *buf);
 int put_block(int dev, int blk, char *buf);
-
-
+// link unlink symlink function declarations
 int mylink(char *oldFileName, char *newFileName);
-int make_dir(char *pathname);
+int unlink(char *pathname);
+// creat function declarations
 int creat_file(char *pathname);
+int my_creat(MINODE *pip, char *name);
+int enter_name_creat(MINODE *pip, int myino, char *myname);
+
+void remove_dir(char *path);
 
 #endif

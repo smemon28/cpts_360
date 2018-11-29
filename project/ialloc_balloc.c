@@ -40,6 +40,23 @@ int clr_bit(char *buf, int bit)
     buf[i] &= ~(1 << j);
 }
 
+int incFreeInodes(int dev)
+/*decrement number of free inodes*/
+{
+    char buf[BLKSIZE];
+
+    // dec free inodes count in SUPER and GD
+    get_block(dev, 1, buf);
+    sp = (SUPER *)buf;
+    sp->s_free_inodes_count++;
+    put_block(dev, 1, buf);
+
+    get_block(dev, 2, buf);
+    gp = (GD *)buf;
+    gp->bg_free_inodes_count++;
+    put_block(dev, 2, buf);
+}
+
 int decFreeInodes(int dev)
 /*decrement number of free inodes*/
 {
@@ -55,6 +72,16 @@ int decFreeInodes(int dev)
     gp = (GD *)buf;
     gp->bg_free_inodes_count--;
     put_block(dev, 2, buf);
+}
+
+int idealloc(int dev, int ino)
+{
+	char buf[BLKSIZE];
+
+	get_block(dev, imap, buf);
+	clr_bit(buf, ino-1);
+	put_block(dev, imap, buf);
+    incFreeInodes(dev);
 }
 
 int ialloc(int dev)
@@ -97,6 +124,23 @@ int pimap()
     printf("\n");
 }
 
+int incFreeBlocks(int dev)
+/*decrement number of free blocks*/
+{
+    char buf[BLKSIZE];
+
+    // dec free inodes count in SUPER and GD
+    get_block(dev, 1, buf);
+    sp = (SUPER *)buf;
+    sp->s_free_blocks_count++;
+    put_block(dev, 1, buf);
+
+    get_block(dev, 2, buf);
+    gp = (GD *)buf;
+    gp->bg_free_blocks_count++;
+    put_block(dev, 2, buf);
+}
+
 int decFreeBlocks(int dev)
 /*decrement number of free blocks*/
 {
@@ -114,6 +158,16 @@ int decFreeBlocks(int dev)
     put_block(dev, 2, buf);
 }
 
+int bdealloc(int dev, int bno)
+{
+	char buf[BLKSIZE];
+
+	get_block(dev, bmap, buf);
+	clr_bit(buf, bno);
+	put_block(dev, bmap, buf);
+    incFreeBlocks(dev);
+}
+
 int balloc(int dev)
 {
     int  b;
@@ -124,12 +178,12 @@ int balloc(int dev)
 
     for (b=0; b < nblocks; b++){
         if (tst_bit(buf, b)==0){
-        set_bit(buf,b);
-        decFreeBlocks(dev);
+            set_bit(buf,b);
+            decFreeBlocks(dev);
 
-        put_block(dev, bmap, buf);
+            put_block(dev, bmap, buf);
 
-        return b+1;
+            return b+1;
         }
     }
     printf("balloc(): no more free blocks\n");

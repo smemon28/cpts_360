@@ -1,18 +1,6 @@
 /****************************************************************************
 *                   cd, ls, pwd Program                                      *
 *****************************************************************************/
-/*******************
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <ext2fs/ext2_fs.h>
-#include <string.h>
-#include <libgen.h>
-#include <sys/stat.h>
-
-#include "type.h"
-*********************/
-
 /**** globals defined in main.c file ****/
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +19,6 @@ extern char line[256], cmd[32], pathname[256];
 
 int print(MINODE *mip)
 {
-	int blk;
 	char buf[1024], temp[256];
 	int i;
 	DIR *dp;
