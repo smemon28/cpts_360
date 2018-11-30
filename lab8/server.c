@@ -2,13 +2,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <time.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define  MAX 256
 
 // Define variables:
+struct dirent *ep;
+
+char command[64], pathname[64], bufc[MAX];
+char t1[20] = "xwrxwrxwr-------";
+char t2[10] = "----------------";
+
 struct sockaddr_in  server_addr, client_addr, name_addr;
 struct hostent *hp;
 
@@ -30,8 +40,8 @@ int server_init(char *name)
       printf("unknown host\n");
       exit(1);
    }
-   printf("    hostname=%s  IP=%d\n",
-               hp->h_name, inet_ntoa(*(long *)hp->h_addr));
+   printf("    hostname=%s IP=(not working)\n", // IP=%d
+               hp->h_name);     // inet_ntoa(*(long *)hp->h_addr))
   
    //  create a TCP socket by socket() syscall
    printf("2 : create a socket\n");
@@ -40,6 +50,7 @@ int server_init(char *name)
       printf("socket call failed\n");
       exit(2);
    }
+
 
    printf("3 : fill server_addr with host IP and PORT# info\n");
    // initialize the server_addr structure
@@ -74,11 +85,94 @@ int server_init(char *name)
    printf("===================== init done =======================\n");
 }
 
+int ls_file(char *fname)
+{
+	struct stat fstat, *sp;
+	int r, i;
+	char ftime[64], temp[50];
+	sp = &fstat;
+	
+	if ( (r = lstat(fname, &fstat)) < 0){
+		printf("can't stat %s\n", fname);
+		exit(1);
+	}
+	if ((sp->st_mode & 0xF000) == 0x8000) {// if (S_ISREG())
+		printf("%c",'-');
+      strcat(bufc, "-");
+   }
+	if ((sp->st_mode & 0xF000) == 0x4000) {// if (S_ISDIR())
+		printf("%c",'d');
+      strcat(bufc, "d");
+   }
+	if ((sp->st_mode & 0xF000) == 0xA000) {// if (S_ISLNK())
+		printf("%c",'l');
+      strcat(bufc, "l");
+   }
+	for (i=8; i >= 0; i--){
+		if (sp->st_mode & (1 << i)) { // print r|w|x
+			printf("%c", t1[i]);
+         temp[0] = t1[i];
+         strcat(bufc, temp);
+      }
+		else { // or print -
+			printf("%c", t2[i]); 
+         temp[0] = t2[i];
+         strcat(bufc, temp);
+      }
+	}
+	printf("%4d ",sp->st_nlink); // link count
+   sprintf(temp, "%d", sp->st_nlink);
+   strcat(bufc, "    "); strcat(bufc, temp);
+
+	printf("%4d ",sp->st_gid); // gid
+   sprintf(temp, "%d", sp->st_gid);
+   strcat(bufc, "    "); strcat(bufc, temp);
+
+	printf("%4d ",sp->st_uid); // uid
+   sprintf(temp, "%d", sp->st_uid);
+   strcat(bufc, "    "); strcat(bufc, temp);
+
+	printf("%8d ",sp->st_size); // file size
+   sprintf(temp, "%d", sp->st_size);
+   strcat(bufc, "    "); strcat(bufc, temp);
+	// print time
+	strcpy(ftime, (time_t)ctime(&sp->st_ctime)); // print time in calendar form
+	ftime[strlen(ftime)-1] = 0; // kill \n at end
+	printf("%s ",ftime); strcat(bufc, "  "); strcat(bufc, ftime);
+	// print name
+	printf("%s", fname); strcat(bufc, "  "); strcat(bufc, fname);  // print file basename
+	// print -> linkname if symbolic file
+	//if ((sp->st_mode & 0xF000)== 0xA000){
+		// use readlink() to read linkname
+		//printf(" -> %s<p>", linkname); // print linked name
+	//}
+	printf("\n");
+   strcat(bufc, "\n");
+}
+
+int ls_dir(char *dname)
+{
+   char temp[50];
+   
+   if (strcmp(dname, "") == 0)
+		strcpy(dname, ".");
+   // use opendir(), readdir(); then call ls_file(name)
+	DIR *dp = opendir(dname);
+	while (ep = readdir(dp)) {
+		ls_file(ep->d_name);
+      sprintf(temp, "%d", strlen(bufc));
+      //n = write(client_sock, temp, MAX);
+      n = write(client_sock, bufc, MAX);
+      strcpy(bufc, "");
+	}
+   n = write(client_sock, "$", MAX);
+}
 
 main(int argc, char *argv[])
 {
    char *hostname;
    char line[MAX];
+   char cwd[128], buf[MAX], temp[10];
 
    if (argc < 2)
       hostname = "localhost";
@@ -89,40 +183,83 @@ main(int argc, char *argv[])
 
    // Try to accept a client request
    while(1){
-     printf("server: accepting new connection ....\n"); 
+      printf("server: accepting new connection ....\n"); 
 
-     // Try to accept a client connection as descriptor newsock
-     length = sizeof(client_addr);
-     client_sock = accept(mysock, (struct sockaddr *)&client_addr, &length);
-     if (client_sock < 0){
-        printf("server: accept error\n");
-        exit(1);
-     }
-     printf("server: accepted a client connection from\n");
-     printf("-----------------------------------------------\n");
-     printf("        IP=%s  port=%d\n", inet_ntoa(client_addr.sin_addr.s_addr),
-                                        ntohs(client_addr.sin_port));
-     printf("-----------------------------------------------\n");
-
-     // Processing loop: newsock <----> client
-     while(1){
-       n = read(client_sock, line, MAX);
-       if (n==0){
-           printf("server: client died, server loops\n");
-           close(client_sock);
-           break;
+      // Try to accept a client connection as descriptor newsock
+      length = sizeof(client_addr);
+      client_sock = accept(mysock, (struct sockaddr *)&client_addr, &length);
+      if (client_sock < 0){
+         printf("server: accept error\n");
+         exit(1);
       }
-      
-      // show the line string
-      printf("server: read  n=%d bytes; line=[%s]\n", n, line);
+      printf("server: accepted a client connection from\n");
+      printf("-----------------------------------------------\n");
+      printf("        IP=(not shown) port=(not shown))\n"); // inet_ntoa(client_addr.sin_addr.s_addr),  ntohs(client_addr.sin_port)
+      printf("-----------------------------------------------\n");
 
-      strcat(line, " ECHO");
+      // Processing loop: newsock <----> client
+      while(1){
+         n = read(client_sock, line, MAX);
+         if (n==0){
+            printf("server: client died, server loops\n");
+            close(client_sock);
+            break;
+         }
 
-      // send the echo line to client 
-      n = write(client_sock, line, MAX);
+         // show the line string
+         printf("server: read  n=%d bytes; line=[%s]\n", n, line);
 
-      printf("server: wrote n=%d bytes; ECHO=[%s]\n", n, line);
-      printf("server: ready for next request\n");
-    }
- }
+         sscanf(line, "%s %s", command, pathname);
+         printf("cmd:%s path:%s\n", command, pathname);
+         if (strcmp(command, "ls") == 0) 
+            ls_dir(pathname);
+         if (strcmp(command, "cd") == 0) 
+            chdir(pathname);
+         if (strcmp(command, "pwd") == 0) {
+            getcwd(cwd, 128);
+            printf("%s\n", cwd);
+            n = write(client_sock, cwd, MAX);
+         } 
+         if (strcmp(command, "mkdir") == 0) 
+            mkdir(pathname, 0755);
+         if (strcmp(command, "rmdir") == 0) 
+            rmdir(pathname);
+         if (strcmp(command, "rm") == 0) 
+            unlink(pathname);
+         if (strcmp(command, "get") == 0) {
+            int fd, total=0;
+            if ((fd = (open(pathname, O_RDONLY))) < 0) {
+               printf("can't open %s\n", pathname);
+               continue;
+            }
+            while (n = read(fd, buf, MAX)) {
+               write(1, buf, MAX);
+               total += n;
+            }
+            printf("total bytes copied=%d\n", total);
+            // send total bytes to client first
+            sprintf(temp, "%d", total);
+            n = write(client_sock, total, MAX);
+            // now send to client
+            while (n = read(fd, buf, MAX)) {
+               write(client_sock, buf, MAX);
+               total += n;
+            }
+            close(fd); //close(gd);
+            n = write(client_sock, "$", MAX);
+         }
+         if (strcmp(command, "put") == 0) 
+
+
+         strcat(line, " ECHO");
+
+         // send the echo line to client 
+         //n = write(client_sock, line, MAX);
+
+         printf("server: wrote n=%d bytes; ECHO=[%s]\n", n, line);
+         printf("server: ready for next request\n");
+         strcpy(command, "");
+         strcpy(pathname, "");
+      }
+   }
 }

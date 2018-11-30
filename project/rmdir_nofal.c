@@ -37,7 +37,7 @@ int isEmptyDir(MINODE *mip)
         cp = buf;
         dp = (DIR*)buf;
 
-        while(cp < buf + BUFSIZ) {
+        while(cp < buf + BLKSIZE) {
             // if this doesn't work use dir count, which can't be greater than 2
             strncpy(tname, dp->name, dp->name_len);
             tname[dp->name_len] = 0;
