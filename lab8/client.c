@@ -222,15 +222,13 @@ main(int argc, char *argv[ ])
 
       if (strcmp(command, "ls") == 0) {
          // Send ENTIRE line to server
-         char temp[MAX];
          n = write(server_sock, line, MAX);
          printf("client: wrote n=%d bytes; line=(%s)\n", n, line);
 
          // Read a line from sock and show it
          while (n = read(server_sock, ans, MAX)) {
-            strncpy(temp, ans, n);
-            printf("%s", temp);
-            if (strcmp(temp, "$") == 0) break; 
+            printf("%s", ans);
+            if (strcmp(ans, "$") == 0) break; 
          }
       }
       if (strcmp(command, "pwd") == 0) {
