@@ -14,7 +14,7 @@ extern char *name[64];
 extern int n;
 extern int fd, dev;
 extern int nblocks, ninodes, bmap, imap, iblk;
-extern char line[256], cmd[32], pathname[256];
+extern char pathname[256];
 
 /*************************FUNCTIONS*******************************/
 int dbname(char *pathname, char *dname, char *bname)
@@ -147,7 +147,8 @@ int enter_name(MINODE *pip, int myino, char *myname)
         cp = buf;
 
         printf("step to LAST entry in data block %d\n", pinode->i_block[i]);
-        while (cp + dp->rec_len < buf + BLKSIZE){
+        // loop through to reach the last entry
+        while (cp + dp->rec_len < buf + BLKSIZE){ 
             /****** Technique for printing, compare, etc.******/
             char c;
             c = dp->name[dp->name_len];
@@ -162,19 +163,21 @@ int enter_name(MINODE *pip, int myino, char *myname)
         // dp NOW points at last entry in block
         // remain = LAST entry's rec_len - last entry IDEAL_LENGTH;
         int ideal_len = 4*( (8 + dp->name_len + 3)/4 );
+        // remember how the rec len of last entry has the whole length remaining in the block
         remaining = dp->rec_len - ideal_len;
 
-        if (remaining > need_length) {
+        if (remaining > need_length) { // we have more than what we need - so we good
             dp->rec_len = ideal_len;    // update rec_len of last entry - will become 2nd to last now
             cp += dp->rec_len;
             dp = (DIR *)cp;
 
             dp->inode = myino;
             dp->rec_len = remaining;    // remining bytes are assigned to added entry (now last)
-            dp->name_len = need_length;
+            //dp->name_len = need_length; //Prof said this is wrong
+            dp->name_len = strlen(myname);
             strncpy(dp->name, myname, dp->name_len);
         }
-        else {
+        else {  // need more than what we have - get new block
             //#5
             int nbno;
             dp->rec_len = ideal_len;    // update rec_len of last entry - will become 2nd to last now

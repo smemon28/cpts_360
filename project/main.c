@@ -26,6 +26,7 @@ int  myargc;                       // number of arguments
 int fd, dev, n;
 int nblocks, ninodes, bmap, imap, iblk;
 char line[256], cmd[32], pathname[256];
+char *cmds[] = {"mkdir", "rmdir", "ls", "cd", "pwd", "creat", "rm","save", "reload", "menu", "quit", NULL};
 
 #include "util.c"
 #include "cd_ls_pwd.c"
@@ -145,6 +146,19 @@ void reset()
 		cmd[i] = 0;
 }
 
+int findcmd(char *command)
+{
+  for(int i=0; cmd[i]!=NULL; i++)
+    {
+      if (strcmp(cmd[i], command) == 0)
+	{
+	  printf("%s\n", cmd[i]);
+	  return i;
+	}     
+    }
+  return -1;
+}
+
 int main(int argc, char *argv[])
 {
 	int ino;
@@ -168,7 +182,7 @@ int main(int argc, char *argv[])
 
 	while (1)
 	{
-		printf("input command : [ls|cd|pwd|mkdir|creat|link|quit] ");
+		printf("input command : [ ls | cd | pwd | mkdir | rmdir | creat | link | unlink | quit] ");
 		fgets(line, 128, stdin);
 		line[strlen(line) - 1] = 0;
 
@@ -206,6 +220,9 @@ int main(int argc, char *argv[])
 		
 		if (strcmp(cmd, "link") == 0)
 			mylink(myargs[1], myargs[2]);
+
+		if (strcmp(cmd, "unlink") == 0)
+			my_unlink(pathname);
 
 		reset();
 	}

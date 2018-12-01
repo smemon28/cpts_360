@@ -13,7 +13,7 @@ extern char *name[64];
 extern int n;
 extern int fd, dev;
 extern int nblocks, ninodes, bmap, imap;
-extern char line[256], cmd[32], pathname[256];
+extern char pathname[256];
 
 char *t1 = "xwrxwrxwr-------";
 char *t2 = "----------------";
