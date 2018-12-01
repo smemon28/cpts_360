@@ -123,6 +123,60 @@ int ls_dir(char *dname)
 	}
 }
 
+int getClient(char* filename)
+{
+   int size, count, fd, n;
+   char buf[MAX] = {0};
+
+   // Get size of the transfer from sender 
+   read(server_sock, buf, MAX);
+   sscanf(buf, "%d", &size);
+   printf("fsize:%i\n", size);
+
+   if(size <= 0)
+      return -1;
+
+   // Write data from sender into specified file
+   count = 0;
+   fd = open(filename, O_WRONLY | O_CREAT, 0664);
+   while(count < size)
+   {
+      n = read(server_sock, buf, MAX);
+      write(fd, buf, n);
+      count += n;
+   }
+   close(fd);
+   return 0;
+}
+
+int client_put(char *fname)
+{
+   struct stat sb;
+   int fd, size, n;
+   char buf[MAX], temp[10];
+   // Check that file exists
+   printf("fname:%s\n", fname);
+   if (stat(fname, &sb) == 0)
+      size = sb.st_size;
+   else
+      size = 0;
+
+   if(size <= 0)
+      return -1;
+   // send total bytes to client first
+   sprintf(temp, "%d", size);
+   n = write(server_sock, temp, MAX);
+   // now send to client
+   if ((fd = (open(pathname, O_RDONLY))) < 0) {
+      printf("can't open %s\n", pathname);
+      return 0;
+   }
+   while (n = read(fd, buf, MAX)) 
+      write(server_sock, buf, n);
+
+   close(fd);
+}
+
 main(int argc, char *argv[ ])
 {
    int n;
@@ -140,15 +194,15 @@ main(int argc, char *argv[ ])
    printf("********  processing loop  *********\n");
    while (1){
       printf("input a command \n");
-      printf("[get put ls mkdir rmdir cd pwd]] \n");
-      printf("[lls lmkdir lrmdir lcd lpwd]] \n");
+      printf("[get put ls mkdir rmdir rm cd pwd]] \n");
+      printf("[lls lmkdir lrmdir lrm lcd lpwd]] \n");
       bzero(line, MAX);                // zero out line[ ]
       fgets(line, MAX, stdin);         // get a line (end with \n) from stdin
 
       sscanf(line, "%s %s", command, pathname);
       line[strlen(line)-1] = 0;        // kill \n at end
-      //if (line[0]==0)                  // exit if NULL line
-         //exit(0);
+      if (line[0]==0)                  // exit if NULL line
+         exit(0);
 
       if (strcmp(command, "lls") == 0) 
          ls_dir(pathname);
@@ -168,13 +222,15 @@ main(int argc, char *argv[ ])
 
       if (strcmp(command, "ls") == 0) {
          // Send ENTIRE line to server
+         char temp[MAX];
          n = write(server_sock, line, MAX);
          printf("client: wrote n=%d bytes; line=(%s)\n", n, line);
 
          // Read a line from sock and show it
          while (n = read(server_sock, ans, MAX)) {
-            printf("%s", ans);
-            if (strcmp(ans, "$") == 0) break; 
+            strncpy(temp, ans, n);
+            printf("%s", temp);
+            if (strcmp(temp, "$") == 0) break; 
          }
       }
       if (strcmp(command, "pwd") == 0) {
@@ -211,25 +267,17 @@ main(int argc, char *argv[ ])
 
       }
       if (strcmp(command, "get") == 0) {
-         int gd;
-
          n = write(server_sock, line, MAX);
          printf("client: wrote n=%d bytes; line=(%s)\n", n, line);
 
-         if ((gd = open(pathname, O_WRONLY|O_CREAT)) < 0){
-            printf("can't open/create %s\n", pathname);
-            continue;
-         }
-         n = read(server_sock, ans, MAX);
-         int flsize = strtol(ans, endptr, 10);
-         printf("flsize:%i\n", flsize);
-         
-         while (n = read(server_sock, ans, MAX)){
-            write(gd, ans, flsize);
-            if (strcmp(ans, "$") == 0) break;
-         }
+         getClient(pathname);
       }
+      if (strcmp(command, "put") == 0) {
+         n = write(server_sock, line, MAX);
+         printf("client: wrote n=%d bytes; line=(%s)\n", n, line);
 
+         client_put(pathname);
+      }
       strcpy(command, "");
       strcpy(pathname, "");
       printf("\n");

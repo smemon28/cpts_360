@@ -17,7 +17,7 @@ struct dirent *ep;
 
 char command[64], pathname[64], bufc[MAX];
 char t1[20] = "xwrxwrxwr-------";
-char t2[10] = "----------------";
+char t2[20] = "----------------";
 
 struct sockaddr_in  server_addr, client_addr, name_addr;
 struct hostent *hp;
@@ -40,7 +40,7 @@ int server_init(char *name)
       printf("unknown host\n");
       exit(1);
    }
-   printf("    hostname=%s IP=(not working)\n", // IP=%d
+   printf("    hostname=%s IP=(not shown)\n", // IP=%d
                hp->h_name);     // inet_ntoa(*(long *)hp->h_addr))
   
    //  create a TCP socket by socket() syscall
@@ -111,12 +111,12 @@ int ls_file(char *fname)
 	for (i=8; i >= 0; i--){
 		if (sp->st_mode & (1 << i)) { // print r|w|x
 			printf("%c", t1[i]);
-         temp[0] = t1[i];
+         sprintf(temp, "%c", t1[i]); //temp[0] = t1[i];
          strcat(bufc, temp);
       }
 		else { // or print -
 			printf("%c", t2[i]); 
-         temp[0] = t2[i];
+         sprintf(temp, "%c", t2[i]); //temp[0] = t2[i];
          strcat(bufc, temp);
       }
 	}
@@ -166,6 +166,59 @@ int ls_dir(char *dname)
       strcpy(bufc, "");
 	}
    n = write(client_sock, "$", MAX);
+}
+
+int server_get(char *fname)
+{
+   struct stat sb;
+   int fd, size;
+   char buf[MAX], temp[10];
+   // Check that file exists
+   printf("fname:%s\n", fname);
+   if (stat(fname, &sb) == 0)
+      size = sb.st_size;
+   else
+      size = 0;
+
+   if(size <= 0)
+      return -1;
+   // send total bytes to client first
+   sprintf(temp, "%d", size);
+   n = write(client_sock, temp, MAX);
+   // now send to client
+   if ((fd = (open(pathname, O_RDONLY))) < 0) {
+      printf("can't open %s\n", pathname);
+      return 0;
+   }
+   while (n = read(fd, buf, MAX))
+      write(client_sock, buf, n);
+   close(fd);
+}
+
+int putServer(char* filename)
+{
+   int size, count, fd, n;
+   char buf[MAX] = {0};
+
+   // Get size of the transfer from sender 
+   read(client_sock, buf, MAX);
+   sscanf(buf, "%d", &size);
+   printf("fsize:%i\n", size);
+   
+   if(size <= 0)
+      return -1;
+
+   // Write data from sender into specified file
+   count = 0;
+   fd = open(filename, O_WRONLY | O_CREAT, 0664);
+   while(count < size)
+   {
+      n = read(client_sock, buf, MAX);
+      write(fd, buf, n);
+      count += n;
+   }
+   close(fd);
+   return 0;
 }
 
 main(int argc, char *argv[])
@@ -226,30 +279,10 @@ main(int argc, char *argv[])
             rmdir(pathname);
          if (strcmp(command, "rm") == 0) 
             unlink(pathname);
-         if (strcmp(command, "get") == 0) {
-            int fd, total=0;
-            if ((fd = (open(pathname, O_RDONLY))) < 0) {
-               printf("can't open %s\n", pathname);
-               continue;
-            }
-            while (n = read(fd, buf, MAX)) {
-               write(1, buf, MAX);
-               total += n;
-            }
-            printf("total bytes copied=%d\n", total);
-            // send total bytes to client first
-            sprintf(temp, "%d", total);
-            n = write(client_sock, total, MAX);
-            // now send to client
-            while (n = read(fd, buf, MAX)) {
-               write(client_sock, buf, MAX);
-               total += n;
-            }
-            close(fd); //close(gd);
-            n = write(client_sock, "$", MAX);
-         }
+         if (strcmp(command, "get") == 0)
+            server_get(pathname);
          if (strcmp(command, "put") == 0) 
-
+            putServer(pathname);
 
          strcat(line, " ECHO");
 
