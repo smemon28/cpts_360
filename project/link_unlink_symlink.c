@@ -27,7 +27,7 @@ int mylink(char *oldFileName, char *newFileName)
     printf("link oldfile:%s newfile:%s\n", oldFileName, newFileName);
     dbname(oldFileName, oparent, ochild);
     printf("oparent:%s ochild:%s\n", oparent, ochild);
-    getchar();
+
     oino = getino(ochild);  // to chk if oldFileName is a DIR or not
     omip = iget(dev, oino);
 
@@ -35,8 +35,7 @@ int mylink(char *oldFileName, char *newFileName)
         printf("%s already exists\n", newFileName);
         return 0;
     }
-    //printf("imode:%x\n", omip->INODE.i_mode);
-    //getchar();
+
     if (omip->INODE.i_mode == FILE_MODE) {
         DIR *dp;    
         MINODE *nmip;
@@ -70,49 +69,42 @@ int mylink(char *oldFileName, char *newFileName)
     printf("not a FILE\n");
 }
 
-int truncate(INODE *ip)
+int truncate(MINODE *mip)
  {
-	char buf[1024], temp[256];
-	int i;
-	DIR *dp;
-	char *cp;
-
-	for (i = 0; i < 12; i++)
-	{
-		if (ip->i_block[i] == 0)
-			return 0;
-		get_block(dev, ip->i_block[i], buf);
-
-		dp = (DIR *)buf;
-		cp = buf;
-
-		printf("inode    rec len    name len    name\n");
-		while (cp < buf + 1024)
-		{
-			strncpy(temp, dp->name, dp->name_len);
-			temp[dp->name_len] = 0; // removing end of str delimiter '/0', why tho?
-			// make dp->name a string in temp[ ]
-			printf("%2d %12d %12d %12s\n", dp->inode, dp->rec_len, dp->name_len, temp);
-			cp += dp->rec_len;
-			dp = (DIR *)cp;
-		}
-	}
- }
- 
-int unlink(char *pathname)
-{
-    int uino;
-    MINODE *umip;
+    // deallocates all data blocks 
+    int i;
     INODE *ip;
 
+    ip = &mip->INODE;
+    for (i = 0; i < 12; i++) {
+        printf("iblock num:%i\n", ip->i_block[i]);
+        if (ip->i_block[i] == 0) continue;
+        bdealloc(dev, ip->i_block[i]);
+        ip->i_block[i] = 0;
+    }
+ }
+ 
+int my_unlink(char *pathname)
+{
+    int uino, pino;
+    MINODE *umip,*pmip;
+    INODE *ip;
+    char parent[64], child[64];
+    // get pathname's inode into memory
     uino = getino(pathname);
     umip = iget(dev, uino);
+    dbname(pathname, parent, child);
+    pino = getino(parent);
+    pmip = iget(dev, pino); 
 
     ip = &umip->INODE;
     if (ip->i_mode == FILE_MODE) {
+        // decrement ilinks count
         ip->i_links_count--;
+        // if ilinks are 0 then this file should be removed
         if (ip->i_links_count == 0)
-            truncate(ip);
+            truncate(umip);
+        rm_child(pmip, child);
     }
     else if (ip->i_mode == DIR_MODE) {
         printf("can't be a DIR\n");

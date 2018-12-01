@@ -14,7 +14,7 @@ extern char *name[64];
 extern int n;
 extern int fd, dev;
 extern int nblocks, ninodes, bmap, imap, iblk;
-extern char line[256], cmd[32], pathname[256];
+extern char pathname[256];
 
 //Checks the minode to ensure the dir is empty
 //If the dir isnt empty we cannot delete the dir
@@ -54,13 +54,13 @@ int isEmptyDir(MINODE *mip)
 	return 1;
 }
 
-void rm_child(MINODE *parent, char *name)
+int rm_child(MINODE *parent, char *name)
 {
-	int i, start, end;
+	int i, n, start, end;
 	INODE *pip;
-	DIR *dp, *prev_dp, *last_dp;
+	DIR *dp, *prev_dp, *nxt_dp;
 	char buf[BLKSIZE], temp[64];
-	char *cp, *last_cp;
+	char *cp;
 
     pip = &parent->INODE;
 	//going to remove the dir specified
@@ -72,7 +72,7 @@ void rm_child(MINODE *parent, char *name)
 	//go through every block of the parent, hunting down the node to remove
     for(i = 0; i < 12 ; i++) {
 		if(pip->i_block[i] == 0)
-			return;
+			return 0;  // consider 'continue'?
         
         get_block(dev, pip->i_block[i], buf);
 		cp = buf;
@@ -85,24 +85,72 @@ void rm_child(MINODE *parent, char *name)
 			//add a null terminating char
 			temp[dp->name_len] = 0;
             printf("dp is at %s\n", temp);
-			getchar();
             if (strcmp(temp, name) == 0) {
                 printf("child found!\n");
                 // 1) if LAST entry in block
                 if (cp + dp->rec_len == buf + BLKSIZE) {
-                    printf("removing LAST entry\n");
+                    printf("removing LAST entry of current block\n");
+					// point to note here is that memory is already allocated as it's whole block
+					// so we are not de-allocating memory in this case, we're just removing the dir
+					// by making rec len of the prev dir to reach remaining blk size
+					// --new stuff will just be written over this dir as it's 'not there'
                     prev_dp->rec_len += dp->rec_len;
 					put_block(dev, pip->i_block[i], buf);
                 }
                 // 2) if (first entry in a data block) 
                 // - means cp would point to entry after "." & ".." -> having rec len = 12; 12+12=24
-                else if (cp == buf + 24) {
-                    printf("removing FIRST entry\n");
+                else if (cp == buf && cp + dp->rec_len == buf + BLKSIZE) {
+                    printf("removing FIRST entry of current block\n");
+					// need to remove the whole block as nothing's there now
+					bdealloc(dev, pip->i_block[i]);
+					//decrement the size of the inode variable size by one block
+					pip->i_size -= BLKSIZE;
+					// in the case we have holes in the data blocks of the INODE
+					// because we can remove any dir and we don't know which block it resides in
+					// NOTE: this is the only case where a block has to be deallocated
+					for (n = 0; n < 12; n++) {
+						if(pip->i_block[i] == 0) {
+							get_block(dev, pip->i_block[i+1], buf);
+							put_block(dev, pip->i_block[i], buf);
+						}
+					}
                 }
                 // 3) if in the middle of a block
                 else {
-                    printf("removing MIDDLE entry\n");
+                    printf("removing entry somewhere in the MIDDLE of the block\n");
+					char *ccp;
+					int st, end, b, f;
+					DIR *ldp;
+					ccp = buf;
+					ldp = (DIR *)buf;
+					// loop to last entry (ldp) - starting from the beginning
+					while(ccp + ldp->rec_len < buf + BLKSIZE) {
+						printf("in loop to last entry\n");
+						strncpy(temp, ldp->name, ldp->name_len);
+						//add a null terminating char
+						temp[ldp->name_len] = 0;
+						printf("ndp:%s\n", temp);
+						ccp += ldp->rec_len;
+						ldp = (DIR *)ccp;
+					}
+					temp[dp->name_len] = 0;
+					printf("to be rmd:%s and last dp:%s\n", dp->name, ldp->name);
+					// cp is where current entry resides
+					// st or cp + dp->rec_len is where the next entry lies
+					// end is total BLOCK size, hence remining space is end - st
+					end = buf + BLKSIZE;
+					st = cp + dp->rec_len;
+					b = cp;
+					f = end - st;
+					printf("cp:%d end:%d st:%d f:%d\n", b, end, st, f);
+					getchar();
+					memmove(cp, st, end - st);
+					putchar('d');
+					getchar();
+					put_block(dev, pip->i_block[i], buf);
+					getchar();
                 }
+				return 0;
             }
             // we know 2 iterations will happen for . and ..
             prev_dp = dp;
@@ -185,7 +233,7 @@ void remove_dir(char *path)
 		return 0;
 	}
 	//check if empty, checks if the child dir has any children besides the . and ..
-	if(isEmptyDir(mip))	{
+	if(isEmptyDir(mip) == 0)	{
 		printf("ERROR: directory not empty\n");
         iput(mip);
 		return 0;
@@ -203,11 +251,6 @@ void remove_dir(char *path)
 	}
 	//deallocate child inode
 	idealloc(dev, ino);
-    
-	//get parent ino from 
-	//find ino will use mip to find the ino from . and .. of the dir to remove and assign them accordingly
-	//findino(mip, &ino, &parent_ino);
-	//printf("ino is %d\nparent ino is%d\n", ino, parent_ino);
     
     //get parent ino
     pino = getino(parent);

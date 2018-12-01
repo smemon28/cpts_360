@@ -26,6 +26,7 @@ int  myargc;                       // number of arguments
 int fd, dev, n;
 int nblocks, ninodes, bmap, imap, iblk;
 char line[256], cmd[32], pathname[256];
+char *cmds[] = {"mkdir", "rmdir", "ls", "cd", "pwd", "creat", "rm","save", "reload", "menu", "quit", NULL};
 
 #include "util.c"
 #include "cd_ls_pwd.c"
@@ -145,6 +146,19 @@ void reset()
 		cmd[i] = 0;
 }
 
+int findcmd(char *command)
+{
+  for(int i=0; cmd[i]!=NULL; i++)
+    {
+      if (strcmp(cmd[i], command) == 0)
+	{
+	  printf("%s\n", cmd[i]);
+	  return i;
+	}     
+    }
+  return -1;
+}
+
 int main(int argc, char *argv[])
 {
 	int ino;
@@ -163,12 +177,10 @@ int main(int argc, char *argv[])
 	init();
 	mount_root();
 	printf("root refCount = %d\n", root->refCount);
-	pimap();
-	pbmap();
 
 	while (1)
 	{
-		printf("input command : [ls|cd|pwd|mkdir|creat|link|quit] ");
+		printf("input command : [ ls | cd | pwd | mkdir | rmdir | creat | link | unlink | quit] ");
 		fgets(line, 128, stdin);
 		line[strlen(line) - 1] = 0;
 
@@ -183,30 +195,28 @@ int main(int argc, char *argv[])
 
 		if (strcmp(cmd, "ls") == 0)
 			ls(pathname);
-
 		if (strcmp(cmd, "cd") == 0)
 			chdir(pathname);
-
 		if (strcmp(cmd, "pwd") == 0)
 			pwd(running->cwd);
-
 		if (strcmp(cmd, "quit") == 0)
 			quit();
 		if (cmd[0] == 'q')
 			quit();
-
 		if (strcmp(cmd, "mkdir") == 0)
 			make_dir(pathname);
-		
 		if (strcmp(cmd, "creat") == 0)
 			creat_file(pathname);
-		
 		if (strcmp(cmd, "rmdir") == 0)
 			remove_dir(pathname);
-		
 		if (strcmp(cmd, "link") == 0)
 			mylink(myargs[1], myargs[2]);
-
+		if (strcmp(cmd, "unlink") == 0)
+			my_unlink(pathname);
+		if (strcmp(cmd, "pimap") == 0)
+			pimap();
+		if (strcmp(cmd, "pbmap") == 0)
+			pbmap();
 		reset();
 	}
 }
