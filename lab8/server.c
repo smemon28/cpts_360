@@ -210,7 +210,8 @@ int putServer(char* filename)
 
    // Write data from sender into specified file
    count = 0;
-   fd = open(filename, O_WRONLY | O_CREAT, 0664);
+   fd = open(filename, O_WRONLY | O_CREAT | O_TMPFILE, 0664);
+   printf("fd:%i\n",fd);
    while(count < size)
    {
       n = read(client_sock, buf, MAX);

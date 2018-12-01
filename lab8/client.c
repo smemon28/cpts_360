@@ -156,15 +156,18 @@ int client_put(char *fname)
    char buf[MAX], temp[10];
    // Check that file exists
    printf("fname:%s\n", fname);
-   if (stat(fname, &sb) == 0)
+   if (stat(fname, &sb) == 0){
       size = sb.st_size;
+      printf("sizeput:%i\n",size);
+   }
    else
       size = 0;
 
-   if(size <= 0)
+   if(size < 0)
       return -1;
    // send total bytes to client first
-   sprintf(temp, "%d", size);
+   if (size == 0) strcpy(temp, "\n");
+   else           sprintf(temp, "%d", size);
    n = write(server_sock, temp, MAX);
    // now send to client
    if ((fd = (open(pathname, O_RDONLY))) < 0) {
