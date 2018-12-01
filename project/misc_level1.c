@@ -17,3 +17,8 @@ extern char pathname[256];
 
 char *t1 = "xwrxwrxwr-------";
 char *t2 = "----------------";
+
+int my_stat(INODE *ip)
+{
+    
+}

@@ -69,17 +69,18 @@ int mylink(char *oldFileName, char *newFileName)
     printf("not a FILE\n");
 }
 
-int truncate(INODE *ip)
+int truncate(MINODE *mip)
  {
     // deallocates all data blocks 
-    char buf[1024], temp[256];
     int i;
-    DIR *dp;
-    char *cp;
+    INODE *ip;
 
+    ip = &mip->INODE;
     for (i = 0; i < 12; i++) {
+        printf("iblock num:%i\n", ip->i_block[i]);
+        if (ip->i_block[i] == 0) continue;
+        bdealloc(dev, ip->i_block[i]);
         ip->i_block[i] = 0;
-        put_block(dev, ip->i_block[i], buf);
     }
  }
  
@@ -102,7 +103,7 @@ int my_unlink(char *pathname)
         ip->i_links_count--;
         // if ilinks are 0 then this file should be removed
         if (ip->i_links_count == 0)
-            truncate(ip);
+            truncate(umip);
         rm_child(pmip, child);
     }
     else if (ip->i_mode == DIR_MODE) {
