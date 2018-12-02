@@ -70,19 +70,20 @@ int mylink(char *oldFileName, char *newFileName)
 }
 
 int truncate(MINODE *mip)
- {
+{
     // deallocates all data blocks 
     int i;
     INODE *ip;
 
     ip = &mip->INODE;
+    idealloc(dev, mip->ino);
     for (i = 0; i < 12; i++) {
         printf("iblock num:%i\n", ip->i_block[i]);
         if (ip->i_block[i] == 0) continue;
         bdealloc(dev, ip->i_block[i]);
         ip->i_block[i] = 0;
     }
- }
+}
  
 int my_unlink(char *pathname)
 {
@@ -94,10 +95,12 @@ int my_unlink(char *pathname)
     uino = getino(pathname);
     umip = iget(dev, uino);
     dbname(pathname, parent, child);
+    // get parent's inode
     pino = getino(parent);
     pmip = iget(dev, pino); 
 
     ip = &umip->INODE;
+    // should be a file
     if (ip->i_mode == FILE_MODE) {
         // decrement ilinks count
         ip->i_links_count--;

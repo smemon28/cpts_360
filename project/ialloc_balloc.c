@@ -163,7 +163,7 @@ int bdealloc(int dev, int bno)
 	char buf[BLKSIZE];
 
 	get_block(dev, bmap, buf);
-	clr_bit(buf, bno);
+	clr_bit(buf, bno-1);
 	put_block(dev, bmap, buf);
     incFreeBlocks(dev);
 }
