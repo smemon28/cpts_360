@@ -35,6 +35,7 @@ char *cmds[] = {"mkdir", "rmdir", "ls", "cd", "pwd", "creat", "rm","save", "relo
 #include "rmdir_nofal.c"
 #include "creat.c"
 #include "link_unlink_symlink.c"
+#include "misc_level1.c"
 
 int tokArguments(char *mystr)
 {
@@ -180,7 +181,8 @@ int main(int argc, char *argv[])
 
 	while (1)
 	{
-		printf("input command : [ ls | cd | pwd | mkdir | rmdir | creat | link | unlink | quit] ");
+		printf("input command : [ ls | cd | pwd | mkdir | rmdir | creat | link ]\n");
+		printf("                [ unlink | quit ] ");
 		fgets(line, 128, stdin);
 		line[strlen(line) - 1] = 0;
 
@@ -217,6 +219,9 @@ int main(int argc, char *argv[])
 			pimap();
 		if (strcmp(cmd, "pbmap") == 0)
 			pbmap();
+		if (strcmp(cmd, "stat") == 0)
+			my_stat(pathname);
+
 		reset();
 	}
 }

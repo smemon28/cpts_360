@@ -53,7 +53,7 @@ int mylink(char *oldFileName, char *newFileName)
         
         omip->dirty = 1;
         // creat new file with same ino as old file
-        enter_name_creat(nmip, omip->ino, nchild);
+        enter_name(nmip, omip->ino, nchild);
         // increment links count for INODE - same for both files
         omip->INODE.i_links_count++;
         iput(omip);

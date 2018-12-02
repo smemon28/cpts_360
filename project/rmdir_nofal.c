@@ -143,7 +143,7 @@ int rm_child(MINODE *parent, char *name)
 					b = cp;
 					f = end - st;
 					printf("cp:%d end:%d st:%d f:%d\n", b, end, st, f);
-					getchar();
+					//getchar();
 					memmove(cp, st, end - st);
 					putchar('d');
 					getchar();

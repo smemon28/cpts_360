@@ -84,7 +84,7 @@ int my_creat(MINODE *pip, char *name)
     ip->i_size = 0;		// Size in bytes - empty file
     ip->i_links_count = 1;	        // Links count=1 because it's a file
     ip->i_atime = ip->i_ctime = ip->i_mtime = time(0L);  // set to current time
-    ip->i_blocks = 2;                	// LINUX: Blocks count in 512-byte chunks 
+    ip->i_blocks = 0;                	// LINUX: Blocks count in 512-byte chunks 
     ip->i_block[0] = bno;             // new FILE has one data block   
     for (i=1; i<15; i++)
         ip->i_block[i] = 0;
@@ -92,71 +92,5 @@ int my_creat(MINODE *pip, char *name)
     mip->dirty = 1;               // mark minode dirty
     iput(mip);                    // write INODE to disk
 
-    enter_name_creat(pip, ino, name);
-}
-
-int enter_name_creat(MINODE *pip, int myino, char *myname)
-{
-    char *cp, buf[BLKSIZE];
-    int i, need_length, remaining;
-    INODE *pinode;
-    DIR *dp;
-
-    pinode = &pip->INODE;
-    for (i=0; i<12; i++){
-        if (pinode->i_block[i] == 0) break;
-
-        need_length = 4*( (8 + strlen(myname) + 3)/4 );  // a multiple of 4
-
-        // step to LAST entry in block: int blk = parent->INODE.i_block[i];
-        // which is equivalent to pinode->i_block[i];
-        get_block(dev, pinode->i_block[i], buf);  // get disk block
-        dp = (DIR *)buf;
-        cp = buf;
-
-        printf("step to LAST entry in data block %d\n", pinode->i_block[i]);
-        while (cp + dp->rec_len < buf + BLKSIZE){
-            /****** Technique for printing, compare, etc.******/
-            char c;
-            c = dp->name[dp->name_len];
-            dp->name[dp->name_len] = 0;
-            printf("%s ", dp->name);
-            dp->name[dp->name_len] = c;
-            /***********************************/
-            cp += dp->rec_len;
-            dp = (DIR *)cp;
-        }
-        printf("\n");
-        // dp NOW points at last entry in block
-        // remain = LAST entry's rec_len - last entry IDEAL_LENGTH;
-        int ideal_len = 4*( (8 + dp->name_len + 3)/4 );
-        remaining = dp->rec_len - ideal_len;
-
-        if (remaining > need_length) {
-            dp->rec_len = ideal_len;    // update rec_len of last entry - will become 2nd to last now
-            cp += dp->rec_len;
-            dp = (DIR *)cp;
-
-            dp->inode = myino;
-            dp->rec_len = remaining;    // remining bytes are assigned to added entry (now last)
-            dp->name_len = need_length;
-            strncpy(dp->name, myname, dp->name_len);
-        }
-        else {
-            //#5
-            int nbno;
-            dp->rec_len = ideal_len;    // update rec_len of last entry - will become 2nd to last now
-            pinode->i_size += BLKSIZE;  // because allocating new data block to contain new dir
-
-            nbno = balloc(dev);
-            pinode->i_block[i+1] = nbno;
-            get_block(dev, pinode->i_block[i+1], buf);  // get next disk block
-            dp = (DIR *)buf;
-            dp->inode = myino;
-            dp->rec_len = BLKSIZE;
-            dp->name_len = need_length;
-            strncpy(dp->name, myname, dp->name_len);
-        }
-        put_block(dev, pinode->i_block[i], buf);
-    }
+    enter_name(pip, ino, name);
 }
